@@ -1,4 +1,6 @@
 CHANGES — financial-operations-service
+GRUPO: Leonardo Pavanelli, Rodrigo Kazuya, Kalony e Nicole Gabrielle
+
 Fase 1 (setembro de 2026)
 ======================================================================
 
