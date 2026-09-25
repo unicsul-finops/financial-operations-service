@@ -1,0 +1,52 @@
+{
+    "clienteId": "12345678901",
+    "tipoPessoa": "PF",
+    "decisao": "APROVADO",
+    "motivo": "Score 872 atende ao mínimo para aprovação automática.",
+    "scoreFinal": 872,
+    "faixaRisco": "EXCELENTE",
+    "probabilidadeDefault": 0.0128,
+    "modelo": {
+        "codigo": "SCORE_PF",
+        "versao": "v1.1.0"
+    },
+    "calculatedAt": "2026-09-24T17:38:38.925398877Z",
+    "origem": "CALCULO",
+    "componentes": [
+        {
+            "nome": "Histórico de Pagamento",
+            "pontuacao": 850,
+            "pontuacaoMaxima": 1000,
+            "pesoPonderado": 0.35,
+            "motivo": "Pontualidade integral na liquidação dos compromissos financeiros."
+        },
+        {
+            "nome": "Capacidade Financeira",
+            "pontuacao": 900,
+            "pontuacaoMaxima": 1000,
+            "pesoPonderado": 0.3,
+            "motivo": "Excelente capacidade de pagamento com margem de renda livre superior a 80%."
+        },
+        {
+            "nome": "Endividamento e Limites",
+            "pontuacao": 850,
+            "pontuacaoMaxima": 1000,
+            "pesoPonderado": 0.2,
+            "motivo": "Gestão prudencial de linhas emergenciais, com uso inferior a 30% do teto."
+        },
+        {
+            "nome": "Estabilidade e Relacionamento",
+            "pontuacao": 900,
+            "pontuacaoMaxima": 1000,
+            "pesoPonderado": 0.15,
+            "motivo": "Vínculo empregatício (28 meses) e relacionamento bancário (40 meses)."
+        }
+    ],
+    "fatoresImpacto": [
+        "Pontualidade integral na liquidação dos compromissos financeiros.",
+        "Excelente capacidade de pagamento com margem de renda livre superior a 80%.",
+        "Gestão prudencial de linhas emergenciais, com uso inferior a 30% do teto.",
+        "Vínculo empregatício (28 meses) e relacionamento bancário (40 meses)."
+    ],
+    "recebidoEm": "2026-09-24T17:38:39.015Z"
+}

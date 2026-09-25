@@ -1,0 +1,21 @@
+{
+    "clienteId": "12345678901",
+    "tipoPessoa": "PF",
+    "decisao": "APROVADO",
+    "dataAprovacao": "2026-09-25",
+    "condicoesFinanceiras": {
+        "valorAprovado": 15000.00,
+        "prazoMeses": 24,
+        "quantidadeParcelas": 24,
+        "taxaJuros": 0.0199,
+        "sistemaAmortizacao": "PRICE",
+        "primeiroVencimento": "2026-10-25"
+    },
+    "contextoScore": {
+        "scoreFinal": 872,
+        "faixaRisco": "EXCELENTE",
+        "probabilidadeDefault": 0.0128,
+        "modelo": "SCORE_PF v1.1.0",
+        "motivo": "Score 872 atende ao mínimo para aprovação automática."
+    }
+}
