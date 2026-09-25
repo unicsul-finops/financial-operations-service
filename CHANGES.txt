@@ -1,0 +1,239 @@
+CHANGES — financial-operations-service
+Fase 1 (setembro de 2026)
+======================================================================
+
+PONTO DE PARTIDA
+----------------------------------------------------------------------
+
+O projeto começou a partir do repositório crud-go
+(https://github.com/leogpava/crud-go), um protótipo em Go + Gin +
+PostgreSQL que já fazia um CRUD simples de financiamentos. Ele serviu de
+referência de estilo e de stack, mas quase tudo foi reescrito, porque o
+contrato com os outros grupos da Esteira de Crédito mudou bastante desde
+que o protótipo foi feito.
+
+Como o crud-go funcionava:
+
+- Tudo ficava num único pacote main (main.go, routes.go, service.go,
+  task.go, parcela.go, juros.go).
+- O ID da operação (operacaoID) vinha de fora, no corpo do POST.
+- O calendário de parcelas não era calculado aqui: era buscado numa API
+  de outro grupo ("grupo de juros"), por um endpoint de importação.
+- Os valores em dinheiro eram float64.
+- O status da parcela não ficava gravado; era calculado na hora pela
+  data de hoje (EM_ABERTO, ATRASADA ou PAGA).
+- Havia uma baixa de pagamento simples, que só gravava a data.
+- Qualquer erro, até "operação não encontrada", voltava como 400.
+- A API rodava na porta 8080, com Dockerfile, docker-compose e uma
+  pequena página HTML em public/.
+
+Este serviço é a última etapa da esteira:
+
+    Score (:8080) -> Decisão (:8081) -> Operações Financeiras (:8083)
+
+Ele só recebe operações que a Decisão já aprovou.
+
+
+O QUE MUDOU
+----------------------------------------------------------------------
+
+1. Novo contrato com o grupo de Decisão
+
+O POST /operacoes agora recebe o payload que fechamos com o grupo de
+Decisão. Ele é aninhado: dados do cliente, um bloco
+"condicoesFinanceiras" e um bloco opcional "contextoScore" com o
+resultado do Score. Duas diferenças importantes em relação ao protótipo:
+
+- O payload não traz mais ID. O ID vindo de fora causava
+  incompatibilidade entre Score e Decisão, então passamos a gerar o ID
+  aqui.
+- O payload não traz o calendário de parcelas. A Decisão confirmou que
+  não vai mandar, então gerar o cronograma virou responsabilidade nossa.
+
+Também só aceitamos operações com decisao = APROVADO; qualquer outra é
+recusada.
+
+2. Identificação da operação
+
+Cada operação ganha dois identificadores:
+
+- id: um UUID gerado pelo PostgreSQL. É a chave primária e o
+  identificador técnico.
+- numeroOperacao: um número legível para pessoas, no formato
+  OP-2026-000001, gerado por uma SEQUENCE do banco. Serve para exibir
+  numa tela ou falar ao telefone.
+
+As consultas (GET /operacoes/:id e GET /operacoes/:id/parcelas) aceitam
+qualquer um dos dois; o número pode vir em maiúsculas ou minúsculas.
+
+3. Cronograma calculado pelo próprio serviço (PRICE e SAC)
+
+O endpoint de importar parcelas e o cliente da API de juros saíram. No
+lugar, o serviço calcula o cronograma sozinho, a partir das condições
+recebidas, nos dois sistemas:
+
+- PRICE: parcela fixa, calculada pela fórmula da tabela Price.
+- SAC: amortização fixa e parcela decrescente.
+
+Alguns cuidados que tomamos no cálculo:
+
+- Os valores são arredondados para centavos em cada parcela, como
+  aparecem para o cliente. A última parcela absorve os centavos que
+  sobram, para o saldo terminar exatamente em zero.
+- Taxa zero é tratada à parte, porque a fórmula da Price dividiria por
+  zero.
+- Os vencimentos são mensais. Um vencimento no dia 31 cai no último dia
+  dos meses mais curtos (31/01, 28/02, 31/03...), em vez de pular para
+  o mês seguinte, como faria a função de datas padrão do Go.
+
+A operação e todas as parcelas são gravadas numa única transação, então
+nunca fica uma operação sem cronograma.
+
+Para conferência: 15.000,00 em 24 parcelas a 1,99% ao mês, na Price, dá
+parcela de 792,17. Um arquivo de exemplo antigo de calendário tinha
+valores que não batiam com essa taxa, por isso não foi usado como
+referência (e acabou saindo do repositório).
+
+4. Dinheiro com tipo decimal exato
+
+Trocamos o float64 pelo tipo decimal da biblioteca shopspring/decimal no
+Go, e usamos NUMERIC no banco. O float64 não representa exatamente
+valores como 0,1 ou 792,17, e num cronograma de 24 parcelas os erros se
+acumulam e viram diferença de centavos. Com o decimal, os testes
+conferem os valores ao centavo, sem margem de erro.
+
+Também passamos a recusar, em vez de arredondar sem avisar, valor
+aprovado com mais de 2 casas decimais e taxa com mais de 6.
+
+5. Organização do código em camadas
+
+O pacote único virou uma estrutura em camadas:
+
+    cmd/api               ponto de entrada; liga tudo e registra as rotas
+    internal/config       leitura de PORT e DATABASE_URL
+    internal/database     conexão com o PostgreSQL
+    internal/domain       tipos, status e erros de negócio
+    internal/handler      HTTP: recebe o JSON e devolve a resposta
+    internal/service      validações, regras e cálculo do cronograma
+    internal/repository   SQL
+
+Mantivemos o estilo do crud-go: comentários curtos em português
+explicando o porquê, validação feita no service, erros com mensagens em
+português para quem usa a API, handlers finos e SQL escrito à mão, com
+RETURNING.
+
+6. Validações mais completas
+
+Além do que o protótipo validava, agora conferimos, entre outras coisas:
+
+- se o tipo de pessoa é PF ou PJ;
+- se o primeiro vencimento é depois da data de aprovação;
+- se o prazo em meses é igual à quantidade de parcelas;
+- se a taxa foi mesmo enviada (antes, a falta dela virava um empréstimo
+  sem juros sem ninguém perceber) e se não veio em porcentagem (1.99 em
+  vez de 0.0199);
+- os limites do contexto do score.
+
+Cada regra devolve uma mensagem clara em português.
+
+7. Banco de dados
+
+O schema.sql deu lugar a migrations numeradas na pasta migrations/:
+
+- 0001_create_foundations.sql: cria as tabelas operacao e parcela, com
+  as condições financeiras, o saldo devedor, os dados do score e
+  restrições no próprio banco (CHECK, UNIQUE, chave estrangeira).
+- 0002_add_numero_operacao.sql: adiciona o numeroOperacao sem mexer na
+  0001 e preenche as operações que já existiam.
+
+A regra é nunca editar uma migration já aplicada: mudança nova vai num
+arquivo novo.
+
+O status da parcela agora fica gravado no banco (começa como PENDENTE).
+Na próxima fase vai existir "parcialmente paga", que não dá para
+descobrir só olhando a data. A tabela de operação também já tem status
+(começa como ATIVA) e saldo devedor, prontos para as fases seguintes.
+
+8. Endpoints
+
+    GET  /health                   verifica se o serviço está no ar
+    POST /operacoes                registra a operação e gera o cronograma
+    GET  /operacoes                lista as operações
+    GET  /operacoes/:id            situação da operação
+    GET  /operacoes/:id/parcelas   cronograma de parcelas
+    GET  /swagger                  documentação interativa
+    GET  /openapi.yaml             especificação OpenAPI
+
+Operação inexistente agora responde 404, e não mais 400.
+
+9. Configuração e execução
+
+- A porta passou a ser a 8083, combinada com os outros grupos (Score
+  8080, Decisão 8081).
+- A configuração vem de variáveis de ambiente ou de um arquivo .env, que
+  não vai para o repositório; o .env.example serve de modelo.
+- Tiramos o Docker: o serviço roda direto com "go run ./cmd/api",
+  usando o PostgreSQL instalado na máquina.
+
+10. Testes
+
+O protótipo não tinha testes. Agora há testes automatizados para:
+
+- o cálculo do cronograma (PRICE, SAC, taxa zero, vários cenários e
+  datas de fim de mês), conferindo ao centavo que o saldo fecha em zero;
+- todas as validações de entrada e suas mensagens;
+- o reconhecimento de UUID e número de operação;
+- o Swagger: se o arquivo é válido, se os exemplos batem com os schemas
+  e se toda rota do código está documentada.
+
+Todos rodam com "go test ./..." e nenhum precisa de banco.
+
+11. Swagger
+
+A documentação interativa fica em http://localhost:8083/swagger, como os
+outros grupos já tinham. A especificação (api/openapi.yaml, em OpenAPI 3)
+foi escrita à mão e fica embutida no programa, então funciona sem
+internet. Outros grupos conseguem abrir pela rede usando o IP da nossa
+máquina, e o botão "Try it out" testa contra esse mesmo endereço.
+
+12. Documentação
+
+- README.md reescrito, com o passo a passo para rodar (pré-requisitos,
+  banco, .env, execução, verificação), os endpoints e os problemas
+  comuns.
+- docs/architecture/adr: o exemplo antigo (que falava em Java e Spring
+  Boot) foi trocado por 8 ADRs com as decisões reais do projeto.
+- docs/architecture/contracts: o contrato completo da API.
+- docs/architecture/diagrams: diagramas da esteira, das camadas, do
+  fluxo do POST, do banco e dos status.
+- docs/requirements: as 20 features do sistema, com o que já foi feito
+  e o que fica para depois, e as regras de negócio.
+- docs/guides/troubleshooting.md: erros comuns e como resolver.
+- docs/development/git-workflow.md: o passo a passo com Git.
+
+
+O QUE FICOU DE FORA NESTA FASE
+----------------------------------------------------------------------
+
+- Pagamento de parcela: o protótipo tinha uma versão simples, mas ela
+  saiu. Na Fase 2 o pagamento vai precisar atualizar saldo, status
+  parcial e histórico, então vai ser refeito do jeito certo.
+- Atraso, encargos, inadimplência, amortização e liquidação antecipada,
+  histórico e resumo financeiro: planejados para as próximas fases.
+- Renegociação: depende de alinhamento com outro grupo.
+- A página HTML (public/) e o cabeçalho de CORS do protótipo não vieram
+  junto. A interface para testes agora é o Swagger. Se algum front-end
+  de outro grupo precisar chamar esta API direto do navegador, o CORS
+  vai ter que voltar.
+
+
+PONTOS CONHECIDOS
+----------------------------------------------------------------------
+
+- O POST não é idempotente: se a Decisão mandar a mesma operação duas
+  vezes, ela é criada duas vezes.
+- Uma falha inesperada do banco ainda responde 400; o certo seria 500.
+- O numeroOperacao não reinicia a cada ano e pode ter buracos na
+  sequência (um número usado por um POST que falhou não é reaproveitado).
+
+Todos esses pontos estão registrados nos ADRs e no contrato da API.
