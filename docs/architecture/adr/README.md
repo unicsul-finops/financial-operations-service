@@ -13,6 +13,7 @@ Esta pasta registra as decisões técnicas relevantes do **financial-operations-
 | [ADR-005](ADR-005-valores-monetarios-decimal.md) | Valores monetários com decimal exato | Aceita |
 | [ADR-006](ADR-006-numero-operacao-legivel.md) | Número de operação legível e busca por ambos os identificadores | Aceita |
 | [ADR-007](ADR-007-migrations-sql-versionadas.md) | Migrations SQL versionadas e não destrutivas | Aceita |
+| [ADR-008](ADR-008-openapi-escrito-a-mao.md) | Swagger com OpenAPI 3 escrito à mão e validado nos testes | Aceita |
 
 ## Quando escrever um ADR
 

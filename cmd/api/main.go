@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -32,6 +33,18 @@ func main() {
 	operacaoService := service.NovoOperacaoService(repo)
 	operacaoHandler := handler.NovoOperacaoHandler(operacaoService)
 
+	router := novoRouter(operacaoHandler)
+
+	log.Printf("financial-operations-service ouvindo na porta %s", cfg.Porta)
+	log.Printf("swagger em http://localhost:%s/swagger", cfg.Porta)
+
+	if err := router.Run(":" + cfg.Porta); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// separado do main pra o teste conseguir conferir se toda rota está documentada no openapi.yaml.
+func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/health", handler.Health)
@@ -41,9 +54,11 @@ func main() {
 	router.GET("/operacoes/:id", operacaoHandler.Buscar)
 	router.GET("/operacoes/:id/parcelas", operacaoHandler.ListarParcelas)
 
-	log.Printf("financial-operations-service ouvindo na porta %s", cfg.Porta)
+	router.GET("/openapi.yaml", handler.OpenAPI)
+	router.GET("/swagger", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/swagger/index.html")
+	})
+	router.GET("/swagger/*any", handler.SwaggerUI())
 
-	if err := router.Run(":" + cfg.Porta); err != nil {
-		log.Fatal(err)
-	}
+	return router
 }

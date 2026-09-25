@@ -55,6 +55,7 @@ As escolhas estão justificadas nos [ADRs](docs/architecture/adr/README.md).
 
 ```text
 financial-operations-service/
+├── api/                      # openapi.yaml (Swagger), embutido no binário
 ├── cmd/api/                  # ponto de entrada: liga dependências e rotas
 ├── internal/
 │   ├── config/               # leitura de PORT e DATABASE_URL
@@ -168,6 +169,7 @@ A saída deve terminar com:
 
 ```text
 financial-operations-service ouvindo na porta 8083
+swagger em http://localhost:8083/swagger
 ```
 
 Mantenha esse terminal aberto.
@@ -225,6 +227,20 @@ http://localhost:8083/operacoes/OP-2026-000001/parcelas
 | `GET` | `/operacoes` | Lista as operações |
 | `GET` | `/operacoes/:id` | Situação da operação (`:id` = UUID ou `numeroOperacao`) |
 | `GET` | `/operacoes/:id/parcelas` | Cronograma de parcelas (`:id` = UUID ou `numeroOperacao`) |
+| `GET` | `/swagger` | Documentação interativa (Swagger UI) |
+| `GET` | `/openapi.yaml` | Especificação OpenAPI 3 |
+
+### Swagger
+
+Com a API rodando, abra:
+
+```text
+http://localhost:8083/swagger
+```
+
+A interface lista todos os endpoints, com schemas, exemplos de request e response e as mensagens de erro, e permite testar as requisições pelo botão **Try it out**. Outros grupos podem abrir pela rede com o IP da máquina deste serviço (`http://IP:8083/swagger`), e o **Try it out** usa esse mesmo endereço.
+
+O spec fica em [`api/openapi.yaml`](api/openapi.yaml) e pode ser importado em ferramentas como Postman, Insomnia ou Bruno, ou usado para gerar clients.
 
 Payload do `POST /operacoes`, combinado com o grupo de Decisão:
 
@@ -266,7 +282,7 @@ O contrato completo, com todas as regras de validação, respostas e mensagens d
 go test ./...
 ```
 
-Os testes cobrem o cálculo do cronograma (PRICE, SAC, taxa zero, vencimentos em fim de mês e fechamento do saldo em zero, conferidos ao centavo) e todas as validações de entrada. Eles não precisam de banco.
+Os testes cobrem o cálculo do cronograma (PRICE, SAC, taxa zero, vencimentos em fim de mês e fechamento do saldo em zero, conferidos ao centavo) e todas as validações de entrada. Eles também validam o `openapi.yaml` (inclusive os exemplos contra os schemas) e conferem se toda rota do router está documentada nele. Nenhum teste precisa de banco.
 
 Antes de abrir uma PR, rode também:
 

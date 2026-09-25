@@ -53,6 +53,8 @@ go test ./...
 
 Se `gofmt -l .` listar arquivos, formate com `gofmt -w .`.
 
+Se a tarefa criar, remover ou alterar uma rota ou um payload, atualize o [`api/openapi.yaml`](../../api/openapi.yaml) na mesma PR. O teste `TestOpenAPICobreTodasAsRotas` quebra se uma rota ficar sem documentação, e o `TestOpenAPIValido` quebra se um exemplo não bater com o schema.
+
 Se a tarefa alterar o banco, crie uma **nova** migration em `migrations/` com o próximo número. Nunca edite uma migration existente ([ADR-007](../architecture/adr/ADR-007-migrations-sql-versionadas.md)).
 
 Se a tarefa envolver uma decisão técnica relevante, registre um ADR em [`docs/architecture/adr`](../architecture/adr/README.md).

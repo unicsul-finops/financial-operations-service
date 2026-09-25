@@ -1,0 +1,501 @@
+openapi: 3.0.3
+
+info:
+  title: Operações Financeiras — Esteira de Crédito
+  version: 1.0.0
+  description: |
+    Última etapa da Esteira de Crédito (Score :8080 → Decisão :8081 → **Operações :8083**).
+
+    Recebe operações **já aprovadas** pelo grupo de Decisão, gera o identificador da operação e o cronograma de parcelas (PRICE ou SAC), e permite consultar a situação e o cronograma.
+
+    - O payload do `POST /operacoes` **não** traz ID nem calendário de parcelas: os dois são gerados aqui.
+    - Valores monetários são calculados com decimal exato. No JSON saem como número, e zeros à direita não são preservados (`298.50` sai como `298.5`).
+    - Todos os erros têm o formato `{"erro": "mensagem"}`.
+
+servers:
+  # relativo de propósito: quem abre o swagger de outra máquina (http://IP:8083/swagger) testa contra esse mesmo IP, não contra o próprio localhost.
+  - url: /
+    description: Mesmo endereço em que este Swagger foi aberto
+
+tags:
+  - name: Operações
+    description: Registro e consulta de operações aprovadas.
+  - name: Saúde
+    description: Verificação de disponibilidade.
+
+paths:
+  /health:
+    get:
+      tags: [Saúde]
+      summary: Verifica se o serviço está no ar
+      operationId: health
+      responses:
+        "200":
+          description: Serviço no ar.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /operacoes:
+    post:
+      tags: [Operações]
+      summary: Registra uma operação aprovada e gera o cronograma
+      description: |
+        Contrato combinado com o grupo de Decisão. A operação e todas as parcelas são gravadas na mesma transação.
+
+        Não é idempotente: reenviar o mesmo payload cria outra operação, com novo `id` e novo `numeroOperacao`.
+      operationId: criarOperacao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriarOperacaoRequest"
+            examples:
+              price:
+                summary: PRICE com contexto do score
+                value:
+                  clienteId: "12345678901"
+                  tipoPessoa: PF
+                  decisao: APROVADO
+                  dataAprovacao: "2026-09-25"
+                  condicoesFinanceiras:
+                    valorAprovado: 15000.00
+                    prazoMeses: 24
+                    quantidadeParcelas: 24
+                    taxaJuros: 0.0199
+                    sistemaAmortizacao: PRICE
+                    primeiroVencimento: "2026-10-25"
+                  contextoScore:
+                    scoreFinal: 872
+                    faixaRisco: EXCELENTE
+                    probabilidadeDefault: 0.0128
+                    modelo: SCORE_PF v1.1.0
+                    motivo: Score 872 atende ao mínimo para aprovação automática.
+              sac:
+                summary: SAC sem contexto do score
+                value:
+                  clienteId: "12345678901"
+                  tipoPessoa: PF
+                  decisao: APROVADO
+                  dataAprovacao: "2026-09-25"
+                  condicoesFinanceiras:
+                    valorAprovado: 15000.00
+                    prazoMeses: 24
+                    quantidadeParcelas: 24
+                    taxaJuros: 0.0199
+                    sistemaAmortizacao: SAC
+                    primeiroVencimento: "2026-10-25"
+      responses:
+        "201":
+          description: Operação registrada, com o cronograma completo em `parcelas`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperacaoComParcelas"
+              examples:
+                price:
+                  summary: PRICE (parcelas abreviadas)
+                  value:
+                    id: 8524e7b3-7178-4aa6-99f0-eca1bff40de4
+                    numeroOperacao: OP-2026-000005
+                    clienteId: "12345678901"
+                    tipoPessoa: PF
+                    status: ATIVA
+                    dataAprovacao: "2026-09-25"
+                    saldoDevedor: 15000
+                    condicoesFinanceiras:
+                      valorAprovado: 15000
+                      prazoMeses: 24
+                      quantidadeParcelas: 24
+                      taxaJuros: 0.0199
+                      sistemaAmortizacao: PRICE
+                      primeiroVencimento: "2026-10-25"
+                    contextoScore:
+                      scoreFinal: 872
+                      faixaRisco: EXCELENTE
+                      probabilidadeDefault: 0.0128
+                      modelo: SCORE_PF v1.1.0
+                      motivo: Score 872 atende ao mínimo para aprovação automática.
+                    criadoEm: "2026-09-25T02:27:23Z"
+                    parcelas:
+                      - numero: 1
+                        vencimento: "2026-10-25"
+                        valorParcela: 792.17
+                        amortizacao: 493.67
+                        juros: 298.5
+                        saldoDevedor: 14506.33
+                        status: PENDENTE
+                      - numero: 2
+                        vencimento: "2026-11-25"
+                        valorParcela: 792.17
+                        amortizacao: 503.49
+                        juros: 288.68
+                        saldoDevedor: 14002.84
+                        status: PENDENTE
+                      - numero: 24
+                        vencimento: "2028-09-25"
+                        valorParcela: 792.14
+                        amortizacao: 776.68
+                        juros: 15.46
+                        saldoDevedor: 0
+                        status: PENDENTE
+        "400":
+          description: JSON malformado ou regra de validação violada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                corpoInvalido:
+                  summary: JSON malformado ou com tipo errado
+                  value:
+                    erro: corpo da requisição inválido
+                naoAprovada:
+                  summary: Decisão diferente de APROVADO
+                  value:
+                    erro: apenas operações com decisao APROVADO podem ser registradas
+                taxaAusente:
+                  summary: taxaJuros não enviada
+                  value:
+                    erro: taxaJuros é obrigatória
+                taxaEmPorcentagem:
+                  summary: Taxa enviada em porcentagem (1.99 em vez de 0.0199)
+                  value:
+                    erro: "taxaJuros deve ser a taxa mensal em decimal, ex.: 0.0199 para 1,99% ao mês"
+                prazoDiferente:
+                  summary: prazoMeses diferente de quantidadeParcelas
+                  value:
+                    erro: prazoMeses deve ser igual a quantidadeParcelas
+                vencimentoAnterior:
+                  summary: Primeiro vencimento não é posterior à aprovação
+                  value:
+                    erro: primeiroVencimento deve ser posterior à dataAprovacao
+
+    get:
+      tags: [Operações]
+      summary: Lista as operações
+      description: Da mais recente para a mais antiga, sem as parcelas. Sem operações cadastradas, devolve `[]`.
+      operationId: listarOperacoes
+      responses:
+        "200":
+          description: Lista de operações.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Operacao"
+        "400":
+          $ref: "#/components/responses/ErroInterno"
+
+  /operacoes/{id}:
+    get:
+      tags: [Operações]
+      summary: Consulta a situação de uma operação
+      description: Na Fase 1 o `status` é sempre `ATIVA` e o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
+      operationId: buscarOperacao
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+      responses:
+        "200":
+          description: Operação encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operacao"
+        "400":
+          $ref: "#/components/responses/IdentificadorInvalido"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /operacoes/{id}/parcelas:
+    get:
+      tags: [Operações]
+      summary: Consulta o cronograma de parcelas
+      description: Parcelas ordenadas por `numero`.
+      operationId: listarParcelas
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+      responses:
+        "200":
+          description: Cronograma da operação.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Parcela"
+        "400":
+          $ref: "#/components/responses/IdentificadorInvalido"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+components:
+  parameters:
+    IdentificadorOperacao:
+      name: id
+      in: path
+      required: true
+      description: |
+        O `id` (UUID) **ou** o `numeroOperacao` (`OP-AAAA-NNNNNN`). O número é aceito em maiúsculas ou minúsculas.
+      schema:
+        type: string
+        pattern: '^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[Oo][Pp]-[0-9]{4}-[0-9]{6,})$'
+      examples:
+        numero:
+          summary: Pelo número da operação
+          value: OP-2026-000001
+        uuid:
+          summary: Pelo UUID
+          value: 8524e7b3-7178-4aa6-99f0-eca1bff40de4
+
+  responses:
+    IdentificadorInvalido:
+      description: O identificador não é um UUID nem um número de operação.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: OP-2026-000001)"
+    NaoEncontrada:
+      description: Operação não encontrada.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: operação não encontrada
+    ErroInterno:
+      description: |
+        Falha inesperada, como erro de banco. Hoje é devolvida como `400`, com a mensagem original do erro; a separação em `500` está prevista.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+
+    Erro:
+      type: object
+      required: [erro]
+      properties:
+        erro:
+          type: string
+          description: Mensagem em português, direcionada a quem consome a API.
+          example: operação não encontrada
+
+    CriarOperacaoRequest:
+      type: object
+      required: [clienteId, tipoPessoa, decisao, dataAprovacao, condicoesFinanceiras]
+      properties:
+        clienteId:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: CPF/CNPJ do cliente. O formato não é validado aqui (é responsabilidade do Score).
+          example: "12345678901"
+        tipoPessoa:
+          type: string
+          enum: [PF, PJ]
+          description: Aceito também em minúsculas.
+        decisao:
+          type: string
+          enum: [APROVADO]
+          description: Somente operações aprovadas podem ser registradas.
+        dataAprovacao:
+          type: string
+          format: date
+          example: "2026-09-25"
+        condicoesFinanceiras:
+          $ref: "#/components/schemas/CondicoesFinanceirasRequest"
+        contextoScore:
+          $ref: "#/components/schemas/ContextoScore"
+
+    CondicoesFinanceirasRequest:
+      type: object
+      required: [valorAprovado, prazoMeses, quantidadeParcelas, taxaJuros, sistemaAmortizacao, primeiroVencimento]
+      properties:
+        valorAprovado:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          description: Maior que zero, com no máximo 2 casas decimais.
+          example: 15000.00
+        prazoMeses:
+          type: integer
+          minimum: 1
+          maximum: 420
+          description: Deve ser igual a `quantidadeParcelas` (cronograma mensal).
+          example: 24
+        quantidadeParcelas:
+          type: integer
+          minimum: 1
+          maximum: 420
+          example: 24
+        taxaJuros:
+          type: number
+          minimum: 0
+          maximum: 1
+          exclusiveMaximum: true
+          description: Taxa **mensal em decimal** (`0.0199` = 1,99% ao mês), com no máximo 6 casas decimais.
+          example: 0.0199
+        sistemaAmortizacao:
+          type: string
+          enum: [PRICE, SAC]
+          description: "`PRICE`: parcela fixa. `SAC`: amortização fixa e parcela decrescente. Aceito também em minúsculas."
+        primeiroVencimento:
+          type: string
+          format: date
+          description: Posterior a `dataAprovacao`. As demais parcelas vencem mensalmente no mesmo dia; um dia 31 cai no último dia dos meses mais curtos.
+          example: "2026-10-25"
+
+    ContextoScore:
+      type: object
+      description: Opcional. Só é armazenado e devolvido nas consultas; não entra em nenhum cálculo. Omitido da resposta quando não foi enviado.
+      properties:
+        scoreFinal:
+          type: integer
+          minimum: 0
+          example: 872
+        faixaRisco:
+          type: string
+          maxLength: 30
+          example: EXCELENTE
+        probabilidadeDefault:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.0128
+        modelo:
+          type: string
+          maxLength: 50
+          example: SCORE_PF v1.1.0
+        motivo:
+          type: string
+          example: Score 872 atende ao mínimo para aprovação automática.
+
+    CondicoesFinanceiras:
+      type: object
+      required: [valorAprovado, prazoMeses, quantidadeParcelas, taxaJuros, sistemaAmortizacao, primeiroVencimento]
+      properties:
+        valorAprovado:
+          type: number
+          example: 15000
+        prazoMeses:
+          type: integer
+          example: 24
+        quantidadeParcelas:
+          type: integer
+          example: 24
+        taxaJuros:
+          type: number
+          example: 0.0199
+        sistemaAmortizacao:
+          type: string
+          enum: [PRICE, SAC]
+        primeiroVencimento:
+          type: string
+          format: date
+          example: "2026-10-25"
+
+    Operacao:
+      type: object
+      required: [id, numeroOperacao, clienteId, tipoPessoa, status, dataAprovacao, saldoDevedor, condicoesFinanceiras, criadoEm]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador técnico, gerado por este serviço.
+          example: 8524e7b3-7178-4aa6-99f0-eca1bff40de4
+        numeroOperacao:
+          type: string
+          pattern: '^OP-[0-9]{4}-[0-9]{6,}$'
+          description: Identificador legível para exibição. Sequencial; não reinicia por ano e pode ter buracos.
+          example: OP-2026-000005
+        clienteId:
+          type: string
+          example: "12345678901"
+        tipoPessoa:
+          type: string
+          enum: [PF, PJ]
+        status:
+          $ref: "#/components/schemas/StatusOperacao"
+        dataAprovacao:
+          type: string
+          format: date
+          example: "2026-09-25"
+        saldoDevedor:
+          type: number
+          description: Na Fase 1 é igual ao `valorAprovado`.
+          example: 15000
+        condicoesFinanceiras:
+          $ref: "#/components/schemas/CondicoesFinanceiras"
+        contextoScore:
+          $ref: "#/components/schemas/ContextoScore"
+        criadoEm:
+          type: string
+          format: date-time
+          description: Momento do registro, em UTC.
+          example: "2026-09-25T02:27:23Z"
+
+    OperacaoComParcelas:
+      allOf:
+        - $ref: "#/components/schemas/Operacao"
+        - type: object
+          required: [parcelas]
+          properties:
+            parcelas:
+              type: array
+              items:
+                $ref: "#/components/schemas/Parcela"
+
+    Parcela:
+      type: object
+      required: [numero, vencimento, valorParcela, amortizacao, juros, saldoDevedor, status]
+      properties:
+        numero:
+          type: integer
+          minimum: 1
+          example: 1
+        vencimento:
+          type: string
+          format: date
+          example: "2026-10-25"
+        valorParcela:
+          type: number
+          description: "`amortizacao + juros`. A última parcela pode diferir alguns centavos, porque absorve os arredondamentos."
+          example: 792.17
+        amortizacao:
+          type: number
+          description: Parte do principal paga na parcela.
+          example: 493.67
+        juros:
+          type: number
+          description: Juros do período sobre o saldo anterior.
+          example: 298.5
+        saldoDevedor:
+          type: number
+          description: Saldo após a parcela. É `0` na última.
+          example: 14506.33
+        status:
+          $ref: "#/components/schemas/StatusParcela"
+
+    StatusOperacao:
+      type: string
+      enum: [ATIVA, EM_ATRASO, INADIMPLENTE, RENEGOCIADA, LIQUIDADA]
+      description: Na Fase 1 toda operação é `ATIVA`. Os demais status são previstos para as próximas fases.
+
+    StatusParcela:
+      type: string
+      enum: [PENDENTE, PAGA, PARCIALMENTE_PAGA, VENCIDA]
+      description: Na Fase 1 toda parcela é `PENDENTE`. Os demais status são previstos para as próximas fases.

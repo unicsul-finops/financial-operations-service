@@ -2,6 +2,8 @@
 
 Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e devolvem JSON.
 
+> **Fonte oficial:** a especificação OpenAPI 3 em [`api/openapi.yaml`](../../../api/openapi.yaml), navegável em `http://localhost:8083/swagger` com a API rodando. Este documento é o resumo em texto; se os dois divergirem, vale o `openapi.yaml`, que é validado nos testes ([ADR-008](../adr/ADR-008-openapi-escrito-a-mao.md)).
+
 - **URL base local:** `http://localhost:8083`
 - **Autenticação:** nenhuma nesta fase.
 - **Datas:** texto no formato `YYYY-MM-DD`. O `criadoEm` é um timestamp UTC ISO-8601.
@@ -16,6 +18,8 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `GET` | `/operacoes` | Lista as operações (sem as parcelas) | `200` |
 | `GET` | `/operacoes/:id` | Consulta a situação de uma operação | `200` |
 | `GET` | `/operacoes/:id/parcelas` | Consulta o cronograma de parcelas | `200` |
+| `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
+| `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
 
 O `:id` aceita o **UUID** (`id`) **ou** o **número da operação** (`numeroOperacao`, ex.: `OP-2026-000001`, em maiúsculas ou minúsculas). Ver [ADR-006](../adr/ADR-006-numero-operacao-legivel.md).
 
