@@ -133,15 +133,17 @@ Crie o banco:
 psql -U postgres -c "CREATE DATABASE finops;"
 ```
 
-Aplique a migration, a partir da raiz do projeto:
+Aplique as migrations **em ordem**, a partir da raiz do projeto:
 
 ```powershell
 psql -U postgres -d finops -f migrations/0001_create_foundations.sql
+psql -U postgres -d finops -f migrations/0002_fase_2_pagamentos_e_eventos.sql
 ```
 
 | Migration | O que faz |
 | --- | --- |
 | `0001_create_foundations.sql` | Cria as tabelas `operacao` e `parcela` |
+| `0002_fase_2_pagamentos_e_eventos.sql` | Cria as tabelas `evento` e `lancamento`, para pagamentos, amortização, liquidação e histórico ([ADR-012](docs/architecture/adr/ADR-012-eventos-e-lancamentos.md)) |
 
 > **Já tinha o banco de uma versão anterior** (de quando o payload vinha da Decisão)? As migrations recomeçaram do zero na integração com o juros ([ADR-010](docs/architecture/adr/ADR-010-reinicio-das-migrations.md)). Recrie o banco antes de aplicar a `0001` nova (as operações de teste antigas são perdidas):
 >
@@ -332,7 +334,9 @@ Mais detalhes e soluções em [Troubleshooting](docs/guides/troubleshooting.md).
 | Documento | Conteúdo |
 | --- | --- |
 | [Requisitos](docs/requirements/README.md) | Features, fases e regras de negócio |
+| [Regras de negócio da Fase 2](docs/requirements/regras-de-negocio-fase-2.md) | Pagamento, atraso, encargos, inadimplência, amortização, liquidação, resumo e histórico |
 | [Contratos da API](docs/architecture/contracts/README.md) | Endpoints, payloads, validações e erros |
+| [Guia de convenções](docs/architecture/contracts/guia-de-convencoes.md) | Regras comuns a todo endpoint e checklist da PR de contrato |
 | [Decisões arquiteturais](docs/architecture/adr/README.md) | ADRs: por que o projeto é como é |
 | [Diagramas](docs/architecture/diagrams/README.md) | Contexto, camadas, fluxo e modelo de dados |
 | [Troubleshooting](docs/guides/troubleshooting.md) | Problemas comuns e soluções |

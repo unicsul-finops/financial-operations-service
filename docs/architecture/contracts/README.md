@@ -2,6 +2,8 @@
 
 Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e devolvem JSON.
 
+> **Endpoint novo?** Siga o [guia de convenções](guia-de-convencoes.md), que traz as regras comuns a todos os endpoints e o checklist da PR de contrato.
+
 > **Fonte oficial:** a especificação OpenAPI 3 em [`api/openapi.yaml`](../../../api/openapi.yaml), navegável em `http://localhost:8083/swagger` com a API rodando. Este documento é o resumo em texto; se os dois divergirem, vale o `openapi.yaml`, que é validado nos testes ([ADR-008](../adr/ADR-008-openapi-escrito-a-mao.md)).
 
 - **URL base local:** `http://localhost:8083`
