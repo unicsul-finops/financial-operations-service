@@ -334,7 +334,9 @@ Mais detalhes e soluções em [Troubleshooting](docs/guides/troubleshooting.md).
 | Documento | Conteúdo |
 | --- | --- |
 | [Requisitos](docs/requirements/README.md) | Features, fases e regras de negócio |
+| [Regras de negócio da Fase 2](docs/requirements/regras-de-negocio-fase-2.md) | Pagamento, atraso, encargos, inadimplência, amortização, liquidação, resumo e histórico |
 | [Contratos da API](docs/architecture/contracts/README.md) | Endpoints, payloads, validações e erros |
+| [Guia de convenções](docs/architecture/contracts/guia-de-convencoes.md) | Regras comuns a todo endpoint e checklist da PR de contrato |
 | [Decisões arquiteturais](docs/architecture/adr/README.md) | ADRs: por que o projeto é como é |
 | [Diagramas](docs/architecture/diagrams/README.md) | Contexto, camadas, fluxo e modelo de dados |
 | [Troubleshooting](docs/guides/troubleshooting.md) | Problemas comuns e soluções |
