@@ -1,0 +1,3 @@
+# o go e o gofmt esperam LF. sem isso, o checkout no windows (core.autocrlf=true) troca para CRLF
+# e o gofmt -l passa a listar todos os arquivos, mesmo sem nada errado neles.
+* text=auto eol=lf
