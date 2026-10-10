@@ -19,19 +19,19 @@ Legenda: ✅ implementado · 🔜 planejado · ⏸️ depende de alinhamento com
 | Registrar cronograma de parcelas | Confere e grava o calendário enviado pelo juros (PRICE ou SAC), com status de cada parcela | ✅ Fase 1 |
 | Consultar cronograma de parcelas | Visualiza todas as parcelas da operação e suas situações | ✅ Fase 1 |
 | Consultar situação da operação | Exibe o status atual da operação | ✅ Fase 1 (só `ATIVA` por enquanto) |
-| Registrar pagamento | Registra o pagamento total ou parcial de uma parcela | 🔜 |
-| Atualizar saldo devedor | Reduz o saldo da operação conforme os valores amortizados | 🔜 (a coluna já existe) |
-| Atualizar status da parcela | Altera a situação para paga, parcialmente paga, pendente ou vencida | 🔜 (a coluna já existe) |
-| Identificar parcelas em atraso | Verifica as parcelas vencidas sem pagamento total | 🔜 |
-| Calcular dias em atraso | Calcula há quantos dias uma parcela está vencida | 🔜 |
-| Aplicar encargos por atraso | Calcula e registra multa, juros de mora e outros encargos | 🔜 |
-| Controlar inadimplência | Identifica e registra operações com parcelas vencidas conforme as regras | 🔜 |
-| Registrar amortização antecipada | Permite o pagamento adicional do principal antes do vencimento | 🔜 |
-| Atualizar operação após amortização antecipada | Recalcula o saldo e reduz prazo ou valor das parcelas restantes | 🔜 |
-| Realizar liquidação antecipada | Permite quitar todo o saldo restante antes do prazo final | 🔜 |
-| Encerrar operação liquidada | Altera o status para liquidada quando não houver mais saldo | 🔜 |
-| Consultar histórico financeiro | Visualiza todos os eventos financeiros da operação | 🔜 (junto com o primeiro evento real: pagamento) |
-| Gerar resumo financeiro | Total contratado, total pago, juros pagos, amortizado, vencido e saldo atual | 🔜 (depende de pagamentos) |
+| Registrar pagamento | Registra o pagamento total ou parcial de uma parcela (RN-14) | 🔜 Fase 2, [#9](https://github.com/unicsul-finops/financial-operations-service/issues/9) |
+| Atualizar saldo devedor | Reduz o saldo da operação pela parte amortizada (RN-15) | 🔜 Fase 2, [#9](https://github.com/unicsul-finops/financial-operations-service/issues/9) |
+| Atualizar status da parcela | Grava paga ou parcialmente paga; vencida é calculada (RN-11) | 🔜 Fase 2, [#6](https://github.com/unicsul-finops/financial-operations-service/issues/6) e [#9](https://github.com/unicsul-finops/financial-operations-service/issues/9) |
+| Identificar parcelas em atraso | Verifica as parcelas vencidas sem pagamento total (RN-10) | 🔜 Fase 2, [#6](https://github.com/unicsul-finops/financial-operations-service/issues/6) |
+| Calcular dias em atraso | Calcula há quantos dias uma parcela está vencida (RN-10) | 🔜 Fase 2, [#6](https://github.com/unicsul-finops/financial-operations-service/issues/6) |
+| Aplicar encargos por atraso | Calcula multa e juros de mora; o que é pago fica registrado nos lançamentos (RN-13) | 🔜 Fase 2, [#7](https://github.com/unicsul-finops/financial-operations-service/issues/7) |
+| Controlar inadimplência | Identifica operações em atraso e inadimplentes, calculado na consulta (RN-12) | 🔜 Fase 2, [#8](https://github.com/unicsul-finops/financial-operations-service/issues/8) |
+| Registrar amortização antecipada | Antecipa as últimas parcelas com desconto (RN-17) | 🔜 Fase 2, [#10](https://github.com/unicsul-finops/financial-operations-service/issues/10) |
+| Atualizar operação após amortização antecipada | Reduz o saldo e o prazo; recalcula a repartição das parcelas restantes (RN-17) | 🔜 Fase 2, [#10](https://github.com/unicsul-finops/financial-operations-service/issues/10) |
+| Realizar liquidação antecipada | Permite quitar todo o saldo restante antes do prazo final (RN-18) | 🔜 Fase 2, [#11](https://github.com/unicsul-finops/financial-operations-service/issues/11) |
+| Encerrar operação liquidada | Status liquidada na liquidação ou ao pagar a última parcela (RN-19) | 🔜 Fase 2, [#9](https://github.com/unicsul-finops/financial-operations-service/issues/9) e [#11](https://github.com/unicsul-finops/financial-operations-service/issues/11) |
+| Consultar histórico financeiro | Visualiza todos os eventos financeiros da operação (RN-21) | 🔜 Fase 2, [#13](https://github.com/unicsul-finops/financial-operations-service/issues/13) |
+| Gerar resumo financeiro | Total contratado, total pago, juros pagos, amortizado, vencido e saldo atual (RN-20) | 🔜 Fase 2, [#12](https://github.com/unicsul-finops/financial-operations-service/issues/12) |
 | Renegociar operação | Cria novas condições de pagamento para uma operação inadimplente | ⏸️ |
 | Gerar novo cronograma após renegociação | Substitui ou reorganiza as parcelas conforme as novas condições | ⏸️ |
 
