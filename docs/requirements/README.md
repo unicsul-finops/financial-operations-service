@@ -41,6 +41,8 @@ A Fase 1 inclui apenas o que é **possível e necessário** com os dados que o p
 
 ## Regras de negócio implementadas
 
+> As regras da Fase 2 (pagamento, atraso, encargos, inadimplência, amortização, liquidação, resumo e histórico), numeradas de RN-09 a RN-21, estão em [regras-de-negocio-fase-2.md](regras-de-negocio-fase-2.md).
+
 ### RN-01 — Somente operações definidas
 
 Só é registrada operação com `operacao.estado = DEFINIDA`, ou seja, já fechada com o cliente no serviço de juros. Qualquer outro valor é recusado com `400`.
