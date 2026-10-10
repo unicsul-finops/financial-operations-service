@@ -4,6 +4,8 @@
 
 Aceita
 
+> **Atualização (2026-10-10):** a regra continua valendo. Houve uma exceção registrada: na integração com o juros as migrations recomeçaram do zero, uma única vez ([ADR-010](ADR-010-reinicio-das-migrations.md)). Por isso a `0002` citada abaixo não existe mais.
+
 ## Data
 
 2026-09-24

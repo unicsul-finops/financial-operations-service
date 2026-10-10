@@ -8,12 +8,15 @@ Esta pasta registra as decisões técnicas relevantes do **financial-operations-
 | --- | --- | --- |
 | [ADR-001](ADR-001-stack-go-gin-postgres.md) | Stack: Go, Gin, database/sql com pgx e PostgreSQL | Aceita |
 | [ADR-002](ADR-002-arquitetura-em-camadas.md) | Arquitetura em camadas com validação no service | Aceita |
-| [ADR-003](ADR-003-id-gerado-pelo-servico.md) | ID da operação gerado pelo próprio serviço | Aceita |
-| [ADR-004](ADR-004-cronograma-gerado-internamente.md) | Cronograma de parcelas gerado internamente (PRICE e SAC) | Aceita |
+| [ADR-003](ADR-003-id-gerado-pelo-servico.md) | ID da operação gerado pelo próprio serviço | Substituída por ADR-011 |
+| [ADR-004](ADR-004-cronograma-gerado-internamente.md) | Cronograma de parcelas gerado internamente (PRICE e SAC) | Substituída por ADR-009 |
 | [ADR-005](ADR-005-valores-monetarios-decimal.md) | Valores monetários com decimal exato | Aceita |
-| [ADR-006](ADR-006-numero-operacao-legivel.md) | Número de operação legível e busca por ambos os identificadores | Aceita |
+| [ADR-006](ADR-006-numero-operacao-legivel.md) | Número de operação legível e busca por ambos os identificadores | Substituída por ADR-009 |
 | [ADR-007](ADR-007-migrations-sql-versionadas.md) | Migrations SQL versionadas e não destrutivas | Aceita |
 | [ADR-008](ADR-008-openapi-escrito-a-mao.md) | Swagger com OpenAPI 3 escrito à mão e validado nos testes | Aceita |
+| [ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md) | Operação criada a partir da simulação do serviço de juros | Aceita |
+| [ADR-010](ADR-010-reinicio-das-migrations.md) | Reinício das migrations na integração com o juros | Aceita |
+| [ADR-011](ADR-011-id-sequencial.md) | ID da operação sequencial, no lugar do UUID | Aceita |
 
 ## Quando escrever um ADR
 

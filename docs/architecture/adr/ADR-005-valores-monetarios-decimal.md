@@ -4,6 +4,8 @@
 
 Aceita
 
+> **Atualização (2026-10-10):** a decisão continua valendo. Depois da integração com o juros, a coluna `probabilidade_default` deixou de existir, entraram colunas de encargos, valor liberado e CET (também `NUMERIC`), e as taxas chegam em percentual com até 4 casas e são guardadas em fração com até 6 ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)).
+
 ## Data
 
 2026-09-24
