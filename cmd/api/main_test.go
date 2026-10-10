@@ -94,6 +94,36 @@ func TestSwaggerUIResponde(t *testing.T) {
 	}
 }
 
+// rota ou método errado também precisam responder no formato {"erro": ...}, e não no text/plain padrão do gin.
+func TestErrosDeRotaEmJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := novoRouter(nil)
+
+	casos := []struct {
+		metodo, caminho, erro string
+		status                int
+	}{
+		{http.MethodGet, "/naoexiste", "rota não encontrada", http.StatusNotFound},
+		{http.MethodPut, "/operacoes", "método não permitido nesta rota", http.StatusMethodNotAllowed},
+		{http.MethodDelete, "/operacoes/1", "método não permitido nesta rota", http.StatusMethodNotAllowed},
+	}
+
+	for _, c := range casos {
+		resposta := httptest.NewRecorder()
+		router.ServeHTTP(resposta, httptest.NewRequest(c.metodo, c.caminho, nil))
+
+		if resposta.Code != c.status {
+			t.Errorf("%s %s: status %d, esperava %d", c.metodo, c.caminho, resposta.Code, c.status)
+		}
+		if tipo := resposta.Header().Get("Content-Type"); tipo != "application/json; charset=utf-8" {
+			t.Errorf("%s %s: Content-Type %q, esperava json", c.metodo, c.caminho, tipo)
+		}
+		if corpo := resposta.Body.String(); !strings.Contains(corpo, `"erro":"`+c.erro+`"`) {
+			t.Errorf("%s %s: corpo %s, esperava o erro %q", c.metodo, c.caminho, corpo, c.erro)
+		}
+	}
+}
+
 func converterParametros(caminho string) string {
 	partes := strings.Split(caminho, "/")
 	for i, parte := range partes {
