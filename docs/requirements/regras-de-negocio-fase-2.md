@@ -32,6 +32,7 @@ Todos os cálculos de atraso, encargos e valor presente dependem de **uma data**
 
 - **Pagamento, amortização e liquidação** informam a `dataPagamento`. Ela não pode ser futura nem anterior à `dataLiberacao`. Se não vier, vale hoje.
 - **Consultas** (operação, parcelas, resumo, histórico, valor de quitação) aceitam `?dataReferencia=YYYY-MM-DD`. Sem o parâmetro, vale hoje.
+- **Só para frente:** a `dataPagamento` e a `dataReferencia` não podem ser anteriores à data do último pagamento, amortização ou liquidação já registrado na operação (`400`). O cálculo da mora (RN-13) e do valor presente (RN-16) depende da ordem dos pagamentos; um pagamento "no passado" mudaria encargos já cobrados. Para ver o que aconteceu antes, a consulta é o histórico (RN-21).
 
 **Por quê:** sem isso, testar um atraso de 91 dias exigiria esperar 91 dias. Com a data de referência, a coleção do Postman/Bruno simula qualquer cenário. Na vida real, a data do pagamento também vem de fora (o dia em que o dinheiro entrou), não do relógio do servidor.
 
@@ -76,7 +77,7 @@ Exemplo: a parcela 1 vence em 30/11/2026. Sem pagamento, a operação fica `EM_A
 | **Multa** | **2%** sobre o valor em aberto da parcela no **primeiro dia de atraso**. É fixada nesse dia e não muda depois. | [CDC, art. 52, §1º](https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm): multa de mora não pode passar de 2% da prestação |
 | **Juros de mora** | **1% ao mês, simples, pro rata die**: a cada dia de atraso, 1% ÷ 30 sobre o valor em aberto da parcela **naquele dia**. | [Súmula 379 do STJ](https://stj.jus.br/publicacaoinstitucional/index.php/sumstj/article/download/5552/5675): em contratos bancários, até 1% ao mês |
 
-- **Valor em aberto da parcela** = juros + amortização da parcela que ainda não foram pagos. Encargos não entram nessa base: não há juros sobre multa nem capitalização.
+- **Valor em aberto da parcela** = juros + amortização da parcela − (juros pagos + amortização paga + desconto concedido). O desconto entra porque uma parcela antecipada (RN-17) é quitada por menos que o seu valor. Parcela `PAGA` tem sempre valor em aberto zero, inclusive as quitadas na liquidação (RN-18). Encargos não entram nessa base: não há juros sobre multa nem capitalização.
 - Com pagamento parcial, a base da mora diminui a partir da data do pagamento. A mora acumulada é a soma de cada trecho: base do trecho × 1% × dias do trecho ÷ 30.
 - **Encargos em aberto** numa data = multa + mora acumulada até a data − encargos já pagos. Arredondamento para centavos (meio para cima) só no resultado, não em cada dia.
 - Nada disso é gravado: os encargos são calculados a partir dos pagamentos já feitos (RN-14) e da data de referência. O que fica gravado é **quanto de cada encargo foi pago** em cada pagamento.
@@ -155,6 +156,10 @@ VP = valor da parcela / (1 + i) ^ (k − f)
 - `k`: posição da parcela entre as que ainda vão vencer (a próxima é 1, a seguinte é 2…);
 - `f`: fração já decorrida do período atual = dias desde o vencimento anterior ÷ dias do período (para o primeiro período, conta a partir da `dataLiberacao`).
 
+**Parcela que vence no próprio dia:** não está vencida (RN-10) nem a vencer. Ela entra pelo **valor em aberto**, sem desconto e sem encargos, e a contagem `k` começa na parcela seguinte. Nesse dia `f = 0`.
+
+**Principal e juros do valor presente:** no meio de um período, o valor presente inclui os juros que já correram no período. A parte de **principal** é `VP ÷ (1 + i) ^ f`; o resto são **juros pro rata** do período em curso. No dia de um vencimento (`f = 0`), o valor presente é todo principal.
+
 **Por quê:**
 
 - O [CDC, art. 52, §2º](https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm) garante a quitação antecipada, total ou parcial, com **redução proporcional dos juros**.
@@ -167,8 +172,9 @@ VP = valor da parcela / (1 + i) ^ (k − f)
 
 - Quita as **últimas N parcelas** do calendário, cada uma pelo seu valor presente (RN-16). O cliente **reduz o prazo**, e as parcelas que sobram continuam com o mesmo valor e o mesmo vencimento.
 - **Só sem atraso:** se houver parcela vencida, o pedido é recusado (`400`) e o atraso precisa ser pago antes. Isso evita misturar desconto com encargos.
+- **Sem parcela paga em parte:** se alguma parcela estiver `PARCIALMENTE_PAGA`, o pedido é recusado (`400`) e ela precisa ser quitada antes. A repartição recalculada (abaixo) não teria como respeitar o que já foi pago dela.
 - Não pode quitar todas as parcelas. Para isso existe a liquidação (RN-18).
-- As parcelas quitadas ficam `PAGA`. O saldo devedor cai pelo valor presente pago, que conta inteiro como amortização; a diferença para o valor da parcela é registrada como **desconto**.
+- As parcelas quitadas ficam `PAGA`. O valor presente pago é dividido em **amortização** (a parte de principal, RN-16) e **juros** (os juros pro rata do período em curso), e o **saldo devedor cai só pela amortização**. A diferença entre o valor da parcela e o valor presente é registrada como **desconto**. No dia de um vencimento os juros são zero.
 - **Repartição das parcelas restantes:** com o saldo menor, a divisão entre juros e amortização das parcelas que sobram muda. Ela é recalculada pela taxa do contrato (`juros = saldo × i`; `amortização = valor − juros`), mantendo valor e vencimento. A última parcela absorve os centavos, como no cálculo do juros.
 - Um `GET /operacoes/{identificador}/amortizacoes/simulacao?quantidadeParcelas=N&dataReferencia=…` devolve o valor antes de o cliente decidir.
 
@@ -183,6 +189,8 @@ Exemplo: em 30/12/2026, com as parcelas 1 e 2 pagas, o cliente antecipa as **2 �
 | **Total** | | **1.873,78** | **1.574,37** | **299,41** |
 
 O saldo devedor cai de 8.482,27 para **6.907,90**. As parcelas 3 a 10 continuam com 936,91 cada, e a repartição recalculada termina com saldo **0,00** na parcela 10.
+
+No meio do período a conta separa os juros. Em **15/01/2027**, as mesmas 2 parcelas custam **1.588,43**: **1.574,38** de amortização e **14,05** de juros dos 16 dias já corridos do período. O saldo cai para **6.907,89**. Se os 14,05 abatessem o saldo, ele ficaria 14,05 menor e a diferença reapareceria como juros a mais na última parcela.
 
 ## RN-18: Liquidação antecipada (total)
 
@@ -204,7 +212,7 @@ Exemplos com as parcelas 1 e 2 pagas em dia:
 
 ## RN-19: Encerramento automático
 
-Quando um pagamento normal (RN-14) quita a **última parcela em aberto**, a operação também passa a `LIQUIDADA`, com o mesmo evento da liquidação. Atende a feature "Encerrar operação liquidada" do backlog.
+Quando um pagamento normal (RN-14) quita a **última parcela em aberto**, a operação também passa a `LIQUIDADA`. Além do evento `PAGAMENTO`, que carrega o dinheiro, é gravado um evento `LIQUIDACAO` **sem valor**, só para marcar o encerramento no histórico. Atende a feature "Encerrar operação liquidada" do backlog.
 
 ## RN-20: Resumo financeiro
 
