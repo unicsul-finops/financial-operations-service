@@ -74,6 +74,9 @@ sequenceDiagram
 ```mermaid
 erDiagram
     operacao ||--|{ parcela : "possui"
+    operacao ||--o{ evento : "histórico"
+    evento ||--|{ lancamento : "distribui o dinheiro"
+    parcela ||--o{ lancamento : "recebe"
 
     operacao {
         BIGINT id PK "sequencial"
@@ -116,7 +119,32 @@ erDiagram
         NUMERIC amortizacao "15,2"
         NUMERIC juros "15,2"
         NUMERIC saldo_devedor "15,2"
-        VARCHAR status "PENDENTE | PAGA | PARCIALMENTE_PAGA | VENCIDA"
+        VARCHAR status "PENDENTE | PARCIALMENTE_PAGA | PAGA (VENCIDA é calculada)"
+    }
+
+    evento {
+        BIGINT id PK "sequencial"
+        BIGINT operacao_id FK
+        VARCHAR tipo "OPERACAO_REGISTRADA | PAGAMENTO | AMORTIZACAO_ANTECIPADA | LIQUIDACAO"
+        DATE data_efeito "dataPagamento"
+        NUMERIC valor "15,2, nulo no registro"
+        VARCHAR identificador_externo "único por operação, opcional"
+        VARCHAR origem "opcional"
+        JSONB detalhe
+        TIMESTAMPTZ registrado_em
+    }
+
+    lancamento {
+        BIGINT id PK "sequencial"
+        BIGINT evento_id FK
+        BIGINT operacao_id FK
+        INTEGER numero_parcela FK "nulo só na liquidação"
+        NUMERIC multa "15,2"
+        NUMERIC juros_mora "15,2"
+        NUMERIC juros "15,2"
+        NUMERIC amortizacao "15,2"
+        NUMERIC desconto "15,2, fora do valor"
+        NUMERIC valor "multa + juros_mora + juros + amortizacao"
     }
 ```
 
@@ -127,13 +155,15 @@ Schema completo em [`migrations/`](../../../migrations).
 ```mermaid
 stateDiagram-v2
     [*] --> ATIVA: POST /operacoes
-    ATIVA --> EM_ATRASO: parcela vencida (futuro)
-    EM_ATRASO --> ATIVA: pagamento em dia (futuro)
-    EM_ATRASO --> INADIMPLENTE: atraso acima do limite (futuro)
-    INADIMPLENTE --> RENEGOCIADA: renegociação (futuro)
-    RENEGOCIADA --> ATIVA: novo cronograma (futuro)
-    ATIVA --> LIQUIDADA: saldo zerado (futuro)
+    ATIVA --> EM_ATRASO: parcela vencida e não paga (1 dia)
+    EM_ATRASO --> INADIMPLENTE: alguma parcela com mais de 90 dias de atraso
+    EM_ATRASO --> ATIVA: parcelas vencidas pagas
+    INADIMPLENTE --> EM_ATRASO: atraso volta a 90 dias ou menos
+    INADIMPLENTE --> ATIVA: parcelas vencidas pagas
+    ATIVA --> LIQUIDADA: liquidação ou última parcela paga
+    EM_ATRASO --> LIQUIDADA: liquidação (vencidas com encargos)
+    INADIMPLENTE --> LIQUIDADA: liquidação (vencidas com encargos)
     LIQUIDADA --> [*]
 ```
 
-Por enquanto só existe a transição inicial para `ATIVA`. As demais são planejadas; as regras exatas de cada transição serão definidas nas próximas fases.
+Regras em [RN-11, RN-12, RN-18 e RN-19](../../requirements/regras-de-negocio-fase-2.md). Só `ATIVA` e `LIQUIDADA` são gravados: `EM_ATRASO` e `INADIMPLENTE` são calculados na consulta, para a data de referência, então as transições entre eles acontecem sozinhas com o passar do tempo e com os pagamentos ([ADR-012](../adr/ADR-012-eventos-e-lancamentos.md)). `RENEGOCIADA` continua prevista no banco, mas depende de alinhamento com outro grupo.

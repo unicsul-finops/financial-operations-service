@@ -17,6 +17,7 @@ Esta pasta registra as decisões técnicas relevantes do **financial-operations-
 | [ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md) | Operação criada a partir da simulação do serviço de juros | Aceita |
 | [ADR-010](ADR-010-reinicio-das-migrations.md) | Reinício das migrations na integração com o juros | Aceita |
 | [ADR-011](ADR-011-id-sequencial.md) | ID da operação sequencial, no lugar do UUID | Aceita |
+| [ADR-012](ADR-012-eventos-e-lancamentos.md) | Movimentações como eventos e lançamentos, e atraso calculado na consulta | Proposta |
 
 ## Quando escrever um ADR
 

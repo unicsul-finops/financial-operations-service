@@ -133,15 +133,17 @@ Crie o banco:
 psql -U postgres -c "CREATE DATABASE finops;"
 ```
 
-Aplique a migration, a partir da raiz do projeto:
+Aplique as migrations **em ordem**, a partir da raiz do projeto:
 
 ```powershell
 psql -U postgres -d finops -f migrations/0001_create_foundations.sql
+psql -U postgres -d finops -f migrations/0002_fase_2_pagamentos_e_eventos.sql
 ```
 
 | Migration | O que faz |
 | --- | --- |
 | `0001_create_foundations.sql` | Cria as tabelas `operacao` e `parcela` |
+| `0002_fase_2_pagamentos_e_eventos.sql` | Cria as tabelas `evento` e `lancamento`, para pagamentos, amortização, liquidação e histórico ([ADR-012](docs/architecture/adr/ADR-012-eventos-e-lancamentos.md)) |
 
 > **Já tinha o banco de uma versão anterior** (de quando o payload vinha da Decisão)? As migrations recomeçaram do zero na integração com o juros ([ADR-010](docs/architecture/adr/ADR-010-reinicio-das-migrations.md)). Recrie o banco antes de aplicar a `0001` nova (as operações de teste antigas são perdidas):
 >
