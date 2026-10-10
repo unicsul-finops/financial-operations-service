@@ -8,11 +8,12 @@ Os diagramas estão em [Mermaid](https://mermaid.js.org/), que o GitHub renderiz
 flowchart LR
     Cliente([Dados do cliente]) --> Score
     Score["Score Engine<br/>:8080"] -->|"POST resultado do score"| Decisao
-    Decisao["Decisão<br/>:8081"] -->|"POST /operacoes<br/>(somente APROVADO)"| FinOps
+    Decisao["Decisão<br/>:8081"] -->|"aprovada"| Juros
+    Juros["Juros"] -->|"POST /operacoes<br/>(somente DEFINIDA,<br/>com o calendário)"| FinOps
     FinOps["Operações Financeiras<br/>:8083"] --> DB[(PostgreSQL<br/>finops)]
 ```
 
-Este serviço é a última etapa: recebe apenas operações aprovadas e passa a ser dono do ciclo financeiro delas.
+Este serviço é a última etapa: recebe apenas operações definidas no juros, já com o calendário, e passa a ser dono do ciclo financeiro delas.
 
 ## Camadas internas
 
@@ -21,7 +22,7 @@ flowchart TB
     HTTP([Requisição HTTP]) --> Handler
     subgraph api["cmd/api"]
         Handler["handler<br/>request/response, status HTTP"]
-        Service["service<br/>validação, regras, cronograma"]
+        Service["service<br/>validação, regras, conferência do calendário"]
         Repository["repository<br/>SQL"]
         Domain["domain<br/>tipos, status, erros"]
     end
@@ -37,31 +38,34 @@ Detalhes em [ADR-002](../adr/ADR-002-arquitetura-em-camadas.md).
 
 ```mermaid
 sequenceDiagram
-    participant D as Decisão
+    participant J as Juros
     participant H as handler
     participant S as service
     participant R as repository
     participant P as PostgreSQL
 
-    D->>H: POST /operacoes (payload aprovado)
+    J->>H: POST /operacoes (operação definida + calendário)
     H->>H: bind do JSON
     H->>S: CriarOperacao(NovaOperacao)
-    S->>S: valida e normaliza
+    S->>S: valida, confere o calendário, converte taxas e fuso
     alt payload inválido
         S-->>H: erro de validação
-        H-->>D: 400 {"erro": "..."}
-    else payload válido
-        S->>S: GerarCronograma (PRICE ou SAC)
+        H-->>J: 400 {"erro": "..."}
+    else identificador já registrado
+        S->>R: BuscarPorNumero
+        R-->>S: operação existente
+        H-->>J: 200 {id, numeroOperacao, status, criadoEm}
+    else operação nova
         S->>R: CriarComParcelas
         R->>P: BEGIN
-        R->>P: INSERT operacao RETURNING (id, numero_operacao)
+        R->>P: INSERT operacao RETURNING
         loop cada parcela
-            R->>P: INSERT parcela RETURNING
+            R->>P: INSERT parcela
         end
         R->>P: COMMIT
-        R-->>S: operação + parcelas
-        S-->>H: operação + parcelas
-        H-->>D: 201 operação com cronograma
+        R-->>S: operação
+        Note over S,P: envio simultâneo do mesmo identificador cai na UNIQUE<br/>e o service devolve a operação já gravada (200)
+        H-->>J: 201 {id, numeroOperacao, status, criadoEm} + Location
     end
 ```
 
@@ -72,30 +76,40 @@ erDiagram
     operacao ||--|{ parcela : "possui"
 
     operacao {
-        UUID id PK
-        VARCHAR numero_operacao UK "OP-AAAA-NNNNNN"
-        VARCHAR cliente_id
+        BIGINT id PK "sequencial"
+        VARCHAR numero_operacao UK "identificador do juros"
+        VARCHAR cliente_id "CPF ou CNPJ"
         VARCHAR tipo_pessoa "PF | PJ"
         VARCHAR status "ATIVA | EM_ATRASO | INADIMPLENTE | RENEGOCIADA | LIQUIDADA"
-        DATE data_aprovacao
+        TIMESTAMPTZ definido_em
+        DATE data_liberacao
+        VARCHAR produto_codigo
+        VARCHAR produto_nome
+        VARCHAR modalidade_bcb
         NUMERIC valor_aprovado "15,2"
         INTEGER prazo_meses
         INTEGER quantidade_parcelas
-        NUMERIC taxa_juros "10,6"
+        NUMERIC taxa_juros "10,6 fração mensal"
+        NUMERIC taxa_juros_anual "10,6 fração"
+        VARCHAR faixa_risco "faixa de preço do juros"
+        BOOLEAN teto_aplicado
         VARCHAR sistema_amortizacao "PRICE | SAC"
         DATE primeiro_vencimento
         NUMERIC saldo_devedor "15,2"
-        INTEGER score_final "opcional"
-        VARCHAR faixa_risco "opcional"
-        NUMERIC probabilidade_default "opcional"
-        VARCHAR modelo_score "opcional"
-        TEXT motivo_score "opcional"
+        NUMERIC iof_diario "15,2"
+        NUMERIC iof_adicional "15,2"
+        NUMERIC iof_total "15,2"
+        NUMERIC tarifa_cadastro "15,2"
+        NUMERIC encargos_total "15,2"
+        NUMERIC valor_liberado "15,2"
+        NUMERIC cet_mensal "10,6 fração"
+        NUMERIC cet_anual "10,6 fração"
         TIMESTAMPTZ criado_em
     }
 
     parcela {
-        UUID id PK
-        UUID operacao_id FK
+        BIGINT id PK "sequencial"
+        BIGINT operacao_id FK
         INTEGER numero "único por operação"
         DATE vencimento
         NUMERIC valor_parcela "15,2"
@@ -122,4 +136,4 @@ stateDiagram-v2
     LIQUIDADA --> [*]
 ```
 
-Na Fase 1 só existe a transição inicial para `ATIVA`. As demais são planejadas; as regras exatas de cada transição serão definidas nas próximas fases.
+Por enquanto só existe a transição inicial para `ATIVA`. As demais são planejadas; as regras exatas de cada transição serão definidas nas próximas fases.

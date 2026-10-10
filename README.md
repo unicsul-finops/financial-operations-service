@@ -16,7 +16,7 @@
 
 ## Sobre o projeto
 
-O **financial-operations-service** é um projeto acadêmico da equipe **UNICSUL FinOps**. Ele é a **última etapa da Esteira de Crédito**: recebe as operações já aprovadas pelo grupo de Decisão, registra as condições financeiras, gera o cronograma de parcelas e, nas próximas fases, acompanha pagamentos, atrasos e liquidação.
+O **financial-operations-service** é um projeto acadêmico da equipe **UNICSUL FinOps**. Ele é a **última etapa da Esteira de Crédito**: recebe do serviço de juros as operações já definidas com o cliente, com o calendário de parcelas pronto, registra a operação e, nas próximas fases, acompanha pagamentos, atrasos e liquidação.
 
 ```text
 Dados do cliente
@@ -24,18 +24,20 @@ Dados do cliente
 Score Engine :8080      calcula o score e classifica o risco
       ↓ HTTP POST
 Decisão :8081           aprova, reprova ou envia para análise manual
-      ↓ HTTP POST /operacoes (somente APROVADO)
-Operações :8083         registra a operação e gera o cronograma   ← este serviço
+      ↓
+Juros                   precifica, simula PRICE/SAC e fecha a operação com o cliente
+      ↓ HTTP POST /operacoes (somente DEFINIDA)
+Operações :8083         confere e registra a operação e o calendário   ← este serviço
       ↓
 PostgreSQL (finops)
 ```
 
-### O que já funciona (Fase 1)
+### O que já funciona
 
-- Recebe a operação aprovada, com as condições financeiras e o contexto do score.
-- Gera o próprio identificador: `id` (UUID) e `numeroOperacao` legível (`OP-2026-000001`).
-- Gera o cronograma de parcelas nos sistemas **PRICE** e **SAC**, com valores exatos ao centavo.
-- Consulta a situação da operação e o cronograma, **pelo UUID ou pelo número da operação**.
+- Recebe a operação do serviço de juros, com produto, taxas, encargos, CET e o calendário de parcelas (**PRICE** ou **SAC**).
+- Confere se o calendário fecha ao centavo e grava como veio, sem recalcular.
+- Usa o identificador do juros como `numeroOperacao` (`OP-2026-0001`), o mesmo em toda a esteira. Reenviar a mesma operação não duplica.
+- Consulta a situação da operação e o cronograma **pelo identificador do juros** (`/operacoes/OP-2026-0001`); o id interno também é aceito.
 
 O roadmap completo, com as fases seguintes, está em [Requisitos](docs/requirements/README.md).
 
@@ -62,14 +64,30 @@ financial-operations-service/
 │   ├── database/             # conexão com o PostgreSQL
 │   ├── domain/               # tipos, status e erros de negócio
 │   ├── handler/              # HTTP: request/response e status
-│   ├── service/              # validações, regras e cálculo do cronograma
+│   ├── service/              # casos de uso, validação do payload e conferência do calendário
 │   └── repository/           # SQL
 ├── migrations/               # schema do banco, aplicado em ordem
-├── examples/                 # payloads de exemplo
+├── collections/              # coleção de testes (Postman e Bruno)
 ├── docs/                     # arquitetura, contratos, requisitos e guias
 ├── .env.example              # modelo de configuração
 └── go.mod
 ```
+
+### Por onde começar a ler
+
+Uma requisição passa pelas camadas nesta ordem ([ADR-002](docs/architecture/adr/ADR-002-arquitetura-em-camadas.md)):
+
+| Arquivo | O que tem |
+| --- | --- |
+| `cmd/api/main.go` | Todas as rotas, em `novoRouter` |
+| `internal/handler/operacao_handler.go` | Formato do request e da response (JSON) e o status HTTP de cada caso |
+| `internal/service/operacao_service.go` | Os casos de uso: criar (com o reenvio), buscar, listar |
+| `internal/service/validacao.go` | As regras do payload do juros e a conversão das taxas e do fuso |
+| `internal/service/calendario.go` | A conferência do calendário de parcelas |
+| `internal/repository/operacao_repository.go` | O SQL |
+| `internal/domain/` | Os tipos, os status e os erros que as camadas compartilham |
+
+Para criar um endpoint novo: a rota em `novoRouter`, o handler, o caso de uso no service, a consulta no repository, a documentação no `api/openapi.yaml` (o teste falha se a rota não estiver documentada) e um pedido na coleção em `collections/`. Mudança no banco entra numa migration nova em `migrations/`, sem editar as que já existem.
 
 ---
 
@@ -115,17 +133,22 @@ Crie o banco:
 psql -U postgres -c "CREATE DATABASE finops;"
 ```
 
-Aplique as migrations **em ordem**, a partir da raiz do projeto:
+Aplique a migration, a partir da raiz do projeto:
 
 ```powershell
 psql -U postgres -d finops -f migrations/0001_create_foundations.sql
-psql -U postgres -d finops -f migrations/0002_add_numero_operacao.sql
 ```
 
 | Migration | O que faz |
 | --- | --- |
 | `0001_create_foundations.sql` | Cria as tabelas `operacao` e `parcela` |
-| `0002_add_numero_operacao.sql` | Adiciona `numero_operacao` (`OP-AAAA-NNNNNN`) com sequence |
+
+> **Já tinha o banco de uma versão anterior** (de quando o payload vinha da Decisão)? As migrations recomeçaram do zero na integração com o juros ([ADR-010](docs/architecture/adr/ADR-010-reinicio-das-migrations.md)). Recrie o banco antes de aplicar a `0001` nova (as operações de teste antigas são perdidas):
+>
+> ```powershell
+> psql -U postgres -c "DROP DATABASE finops;"
+> psql -U postgres -c "CREATE DATABASE finops;"
+> ```
 
 Quando uma nova migration entrar no repositório, aplique **somente ela**, com o mesmo comando. Migrations já aplicadas nunca são editadas ([ADR-007](docs/architecture/adr/ADR-007-migrations-sql-versionadas.md)).
 
@@ -197,24 +220,18 @@ Resposta esperada:
 { "status": "ok" }
 ```
 
-Criar uma operação com o payload de exemplo (PowerShell):
+Criar uma operação com o payload de exemplo do juros: abra `http://localhost:8083/swagger`, entre em `POST /operacoes`, clique em **Try it out**, escolha o exemplo **price** e clique em **Execute**.
 
-```powershell
-Invoke-RestMethod `
-    -Uri "http://localhost:8083/operacoes" `
-    -Method POST `
-    -ContentType "application/json" `
-    -InFile "examples/finops_operacao_create.json"
-```
+A resposta só confirma o registro: `id`, `numeroOperacao` (`OP-2026-0001`), `status` e `criadoEm`. Executar de novo responde `200` com a mesma operação, sem duplicar.
 
-A resposta traz o `id`, o `numeroOperacao` e as 24 parcelas. Para o exemplo (15.000,00 em 24x a 1,99% a.m., PRICE), a parcela é **792,17**.
-
-Consultar pelo número ou pelo id:
+Consultar a operação completa e as 12 parcelas (para o exemplo, 10.000,00 em 12x a 1,85% a.m., PRICE, a parcela é **936,91**):
 
 ```text
-http://localhost:8083/operacoes/OP-2026-000001
-http://localhost:8083/operacoes/OP-2026-000001/parcelas
+http://localhost:8083/operacoes/OP-2026-0001
+http://localhost:8083/operacoes/OP-2026-0001/parcelas
 ```
+
+Para testar tudo de uma vez, use a coleção em [`collections/`](collections). Ela está no formato do Postman e abre tanto no **Postman** (Import) quanto no **Bruno** (Import Collection → Postman Collection). Rode a coleção inteira, na ordem. O `baseUrl` padrão é `http://localhost:8083`; para outra máquina, importe também o `local.postman_environment.json` e troque o endereço.
 
 ---
 
@@ -223,10 +240,10 @@ http://localhost:8083/operacoes/OP-2026-000001/parcelas
 | Método | Rota | Descrição |
 | --- | --- | --- |
 | `GET` | `/health` | Verifica se o serviço está no ar |
-| `POST` | `/operacoes` | Registra uma operação aprovada e gera o cronograma |
+| `POST` | `/operacoes` | Registra a operação definida no juros, com o calendário |
 | `GET` | `/operacoes` | Lista as operações |
-| `GET` | `/operacoes/:id` | Situação da operação (`:id` = UUID ou `numeroOperacao`) |
-| `GET` | `/operacoes/:id/parcelas` | Cronograma de parcelas (`:id` = UUID ou `numeroOperacao`) |
+| `GET` | `/operacoes/:identificador` | Situação da operação (`numeroOperacao`, ou o id interno) |
+| `GET` | `/operacoes/:identificador/parcelas` | Cronograma de parcelas (`numeroOperacao`, ou o id interno) |
 | `GET` | `/swagger` | Documentação interativa (Swagger UI) |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 |
 
@@ -242,35 +259,13 @@ A interface lista todos os endpoints, com schemas, exemplos de request e respons
 
 O spec fica em [`api/openapi.yaml`](api/openapi.yaml) e pode ser importado em ferramentas como Postman, Insomnia ou Bruno, ou usado para gerar clients.
 
-Payload do `POST /operacoes`, combinado com o grupo de Decisão:
+O `POST /operacoes` recebe o payload do serviço de juros como ele é enviado. O exemplo completo está no Swagger (exemplos `price` e `sac` do `POST /operacoes`) e nos pedidos de criação da coleção em [`collections/`](collections).
 
-```json
-{
-  "clienteId": "12345678901",
-  "tipoPessoa": "PF",
-  "decisao": "APROVADO",
-  "dataAprovacao": "2026-09-25",
-  "condicoesFinanceiras": {
-    "valorAprovado": 15000.00,
-    "prazoMeses": 24,
-    "quantidadeParcelas": 24,
-    "taxaJuros": 0.0199,
-    "sistemaAmortizacao": "PRICE",
-    "primeiroVencimento": "2026-10-25"
-  },
-  "contextoScore": {
-    "scoreFinal": 872,
-    "faixaRisco": "EXCELENTE",
-    "probabilidadeDefault": 0.0128,
-    "modelo": "SCORE_PF v1.1.0",
-    "motivo": "Score 872 atende ao mínimo para aprovação automática."
-  }
-}
-```
-
-- O payload **não** traz ID: o serviço gera.
-- O payload **não** traz o calendário de parcelas: o serviço gera.
-- `taxaJuros` é a taxa **mensal em decimal** (`0.0199` = 1,99% a.m.).
+- O `operacao.identificador` é **obrigatório** e vira o `numeroOperacao`. Reenviar o mesmo identificador responde `200`, sem gravar de novo.
+- A resposta só confirma o registro (`id`, `numeroOperacao`, `status`, `criadoEm`); os dados completos ficam nos `GET`.
+- O `calendario` é gravado como veio, depois de conferido: se as contas não fecharem, a resposta é `400`.
+- O juros envia taxas e CET em **percentual** (`1.85`); a API devolve toda taxa em **fração** (`0.0185`).
+- Data/hora sem fuso é interpretada como **GMT-03:00**; as respostas saem em UTC.
 
 O contrato completo, com todas as regras de validação, respostas e mensagens de erro, está em [Contratos da API](docs/architecture/contracts/README.md).
 
@@ -282,7 +277,9 @@ O contrato completo, com todas as regras de validação, respostas e mensagens d
 go test ./...
 ```
 
-Os testes cobrem o cálculo do cronograma (PRICE, SAC, taxa zero, vencimentos em fim de mês e fechamento do saldo em zero, conferidos ao centavo) e todas as validações de entrada. Eles também validam o `openapi.yaml` (inclusive os exemplos contra os schemas) e conferem se toda rota do router está documentada nele. Nenhum teste precisa de banco.
+Os testes ficam ao lado do código (`internal/service/*_test.go` e `cmd/api/main_test.go`) e cobrem a conferência do calendário recebido (ordem, vencimentos, soma das parcelas e saldo encadeado até zero, ao centavo), a conversão das taxas, a interpretação do fuso e todas as validações de entrada. Eles também validam o `openapi.yaml` (inclusive os exemplos contra os schemas), conferem se toda rota do router está documentada nele e se os erros de rota e de método saem em JSON. Nenhum teste precisa de banco.
+
+Para testar a API rodando, de ponta a ponta, use a coleção em `collections/` (seção 6).
 
 Antes de abrir uma PR, rode também:
 
@@ -298,17 +295,17 @@ go vet ./...
 Os serviços da esteira podem rodar em máquinas diferentes. Exemplo:
 
 ```text
-Máquina A — Decisão        192.168.0.10:8081
+Máquina A — Juros          192.168.0.20
 Máquina B — Operações      192.168.0.30:8083
 ```
 
-Nesse caso, a Decisão deve enviar para:
+Nesse caso, o juros deve enviar para:
 
 ```text
 http://192.168.0.30:8083/operacoes
 ```
 
-O IP na URL é o da máquina que **recebe** a requisição. Portanto, Decisão → Operações usa o IP da máquina de **Operações**.
+O IP na URL é o da máquina que **recebe** a requisição. Portanto, Juros → Operações usa o IP da máquina de **Operações**.
 
 Na máquina deste serviço, libere a porta 8083 no firewall do Windows para conexões de entrada.
 
@@ -321,8 +318,8 @@ Na máquina deste serviço, libere a porta 8083 no firewall do Windows para cone
 | `DATABASE_URL não configurada` | Falta o `.env`, ou a API foi rodada fora da raiz do projeto |
 | `password authentication failed` | Senha errada no `DATABASE_URL` |
 | `database "finops" does not exist` | Faltou o `CREATE DATABASE` da seção 3 |
-| `relation "operacao" does not exist` | Migrations não aplicadas |
-| `column "numero_operacao" does not exist` | Falta aplicar a migration `0002` |
+| `relation "operacao" does not exist` | Migration não aplicada |
+| `column "definido_em" does not exist` | Banco é de uma versão anterior: recrie (seção 3) |
 | `connection refused` na porta 5432 | Serviço do PostgreSQL parado |
 | Porta 8083 em uso | Outra instância da API já está rodando |
 

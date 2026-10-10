@@ -6,159 +6,204 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 
 - **URL base local:** `http://localhost:8083`
 - **Autenticação:** nenhuma nesta fase.
-- **Datas:** texto no formato `YYYY-MM-DD`. O `criadoEm` é um timestamp UTC ISO-8601.
-- **Valores monetários e taxas:** números JSON, calculados com decimal exato ([ADR-005](../adr/ADR-005-valores-monetarios-decimal.md)). Zeros à direita não são preservados (`298.50` sai como `298.5`).
+- **Datas:** texto no formato `YYYY-MM-DD`. `definidoEm` e `criadoEm` saem como timestamp UTC ISO-8601.
+- **Data/hora recebida sem fuso:** interpretada como **GMT-03:00** ([ADR-009](../adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md)).
+- **Valores monetários:** números JSON, calculados com decimal exato ([ADR-005](../adr/ADR-005-valores-monetarios-decimal.md)). Zeros à direita não são preservados (`185.00` sai como `185`).
+- **Taxas:** o juros envia em **percentual** (`1.85` = 1,85%); a API devolve **toda taxa em fração** (`0.0185`).
 
 ## Resumo dos endpoints
 
 | Método | Rota | Descrição | Sucesso |
 | --- | --- | --- | --- |
 | `GET` | `/health` | Verifica se o serviço está no ar | `200` |
-| `POST` | `/operacoes` | Registra uma operação aprovada e gera o cronograma | `201` |
+| `POST` | `/operacoes` | Registra a operação definida no juros, com o calendário | `201` (nova) / `200` (reenvio) |
 | `GET` | `/operacoes` | Lista as operações (sem as parcelas) | `200` |
-| `GET` | `/operacoes/:id` | Consulta a situação de uma operação | `200` |
-| `GET` | `/operacoes/:id/parcelas` | Consulta o cronograma de parcelas | `200` |
+| `GET` | `/operacoes/:identificador` | Consulta a situação de uma operação | `200` |
+| `GET` | `/operacoes/:identificador/parcelas` | Consulta o cronograma de parcelas | `200` |
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
 
-O `:id` aceita o **UUID** (`id`) **ou** o **número da operação** (`numeroOperacao`, ex.: `OP-2026-000001`, em maiúsculas ou minúsculas). Ver [ADR-006](../adr/ADR-006-numero-operacao-legivel.md).
+As consultas são feitas pelo **identificador do juros**, que é o `numeroOperacao` (ex.: `/operacoes/OP-2026-0001`, em maiúsculas ou minúsculas). É assim que a operação é conhecida em toda a esteira. O `id` interno (inteiro, ex.: `/operacoes/1`) também é aceito, mas só faz sentido dentro deste serviço.
 
 ---
 
 ## `POST /operacoes`
 
-Contrato combinado com o grupo de **Decisão**. Registra uma operação **já aprovada**.
+Payload enviado pelo **serviço de juros**, com a simulação que o cliente escolheu ([ADR-009](../adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md)).
 
-- O payload **não** traz ID: o serviço gera o `id` (UUID) e o `numeroOperacao` ([ADR-003](../adr/ADR-003-id-gerado-pelo-servico.md)).
-- O payload **não** traz o calendário de parcelas: o serviço gera o cronograma ([ADR-004](../adr/ADR-004-cronograma-gerado-internamente.md)).
+- O `operacao.identificador` é **obrigatório** e vira o `numeroOperacao`, o mesmo em toda a esteira. Este serviço não gera número próprio; gera só o `id` técnico, sequencial ([ADR-011](../adr/ADR-011-id-sequencial.md)).
+- O `calendario` é **gravado como veio**, sem recálculo, depois de conferido.
+- **Idempotente pelo identificador:** se ele já existir, nada é gravado e a resposta é `200`.
+- A resposta só confirma o registro. O juros já tem os dados que enviou; quem precisar da operação completa usa os `GET`.
 
 ### Request
 
+O payload completo está no exemplo `price` do `POST /operacoes` no Swagger e na coleção em [`collections/`](../../../collections) (calendário abreviado abaixo):
+
 ```json
 {
-  "clienteId": "12345678901",
-  "tipoPessoa": "PF",
-  "decisao": "APROVADO",
-  "dataAprovacao": "2026-09-25",
-  "condicoesFinanceiras": {
-    "valorAprovado": 15000.00,
-    "prazoMeses": 24,
-    "quantidadeParcelas": 24,
-    "taxaJuros": 0.0199,
-    "sistemaAmortizacao": "PRICE",
-    "primeiroVencimento": "2026-10-25"
+  "operacao": {
+    "id": 1,
+    "identificador": "OP-2026-0001",
+    "estado": "DEFINIDA",
+    "criadoEm": "2026-10-08 14:03:22",
+    "definidoEm": "2026-10-08 15:12:40"
   },
-  "contextoScore": {
-    "scoreFinal": 872,
-    "faixaRisco": "EXCELENTE",
-    "probabilidadeDefault": 0.0128,
-    "modelo": "SCORE_PF v1.1.0",
-    "motivo": "Score 872 atende ao mínimo para aprovação automática."
-  }
+  "cliente": { "tipoPessoa": "PF", "documento": "52998224725" },
+  "produto": {
+    "codigo": "CONSIGNADO_INSS",
+    "nome": "Crédito pessoal consignado INSS",
+    "modalidadeBcb": "Crédito pessoal consignado INSS - Prefixado"
+  },
+  "condicoes": { "valor": 10000, "prazoMeses": 12, "dataLiberacao": "2026-10-30", "primeiroRelacionamento": true },
+  "taxa": { "faixaRisco": "B", "taxaFinalMes": 1.85, "taxaFinalAno": 24.6, "tetoAplicado": true },
+  "sistema": "PRICE",
+  "resumo": { "parcelaFixa": 936.91, "totalJuros": 1242.88, "totalPago": 11242.88 },
+  "encargos": {
+    "iof": { "diario": 167.65, "adicional": 38, "total": 205.65 },
+    "tarifaCadastro": 50,
+    "total": 255.65
+  },
+  "valorLiberado": 9744.35,
+  "cet": { "anualPercentual": 30.89, "mensalPercentual": 2.27 },
+  "calendario": [
+    { "numero": 1, "amortizacao": 751.91, "juros": 185, "valor": 936.91, "saldoDevedor": 9248.09, "vencimento": "2026-11-30", "diasCorridos": 31 },
+    { "numero": 12, "amortizacao": 919.85, "juros": 17.02, "valor": 936.87, "saldoDevedor": 0, "vencimento": "2027-11-01", "diasCorridos": 367 }
+  ]
 }
 ```
-
-Um exemplo pronto está em [`examples/finops_operacao_create.json`](../../../examples/finops_operacao_create.json).
 
 ### Campos
 
 | Campo | Tipo | Obrigatório | Regra |
 | --- | --- | --- | --- |
-| `clienteId` | texto | sim | Não vazio, até 20 caracteres. O formato de CPF/CNPJ não é validado aqui. |
-| `tipoPessoa` | texto | sim | `PF` ou `PJ`. |
-| `decisao` | texto | sim | Deve ser `APROVADO`. |
-| `dataAprovacao` | data | sim | `YYYY-MM-DD`. |
-| `condicoesFinanceiras.valorAprovado` | número | sim | Maior que zero, até 2 casas decimais. |
-| `condicoesFinanceiras.prazoMeses` | inteiro | sim | Igual a `quantidadeParcelas`. |
-| `condicoesFinanceiras.quantidadeParcelas` | inteiro | sim | De 1 a 420. |
-| `condicoesFinanceiras.taxaJuros` | número | sim | Taxa **mensal em decimal** (`0.0199` = 1,99% a.m.). Maior ou igual a 0 e menor que 1, até 6 casas decimais. |
-| `condicoesFinanceiras.sistemaAmortizacao` | texto | sim | `PRICE` ou `SAC`. |
-| `condicoesFinanceiras.primeiroVencimento` | data | sim | `YYYY-MM-DD`, posterior a `dataAprovacao`. |
-| `contextoScore` | objeto | não | Só é armazenado para consulta; não entra em nenhum cálculo. |
-| `contextoScore.scoreFinal` | inteiro | não | Maior ou igual a 0. |
-| `contextoScore.faixaRisco` | texto | não | Até 30 caracteres. |
-| `contextoScore.probabilidadeDefault` | número | não | Entre 0 e 1. |
-| `contextoScore.modelo` | texto | não | Até 50 caracteres. |
-| `contextoScore.motivo` | texto | não | Livre. |
+| `operacao.identificador` | texto | sim | `OP-AAAA-NNNN` (4 dígitos ou mais). Vira o `numeroOperacao`. |
+| `operacao.estado` | texto | sim | Deve ser `DEFINIDA`. |
+| `operacao.definidoEm` | texto | sim | `YYYY-MM-DD HH:MM:SS` (GMT-03:00) ou ISO-8601 com fuso. |
+| `cliente.tipoPessoa` | texto | sim | `PF` ou `PJ`. |
+| `cliente.documento` | texto | sim | Só dígitos: 11 para PF, 14 para PJ. Vira o `clienteId`. |
+| `produto.codigo` | texto | sim | Até 50 caracteres. |
+| `produto.nome` | texto | sim | Até 100 caracteres. |
+| `produto.modalidadeBcb` | texto | sim | Até 150 caracteres. |
+| `condicoes.valor` | número | sim | Maior que zero, até 2 casas. Vira o `valorAprovado` e o `saldoDevedor` inicial. |
+| `condicoes.prazoMeses` | inteiro | sim | De 1 a 420, igual à quantidade de parcelas do `calendario`. |
+| `condicoes.dataLiberacao` | data | sim | `YYYY-MM-DD`. O primeiro vencimento deve ser posterior. |
+| `taxa.faixaRisco` | texto | sim | Até 10 caracteres. Faixa de preço do juros. |
+| `taxa.taxaFinalMes` | número | sim | Percentual mensal, ≥ 0 e < 100, até 4 casas. |
+| `taxa.taxaFinalAno` | número | sim | Percentual anual, ≥ 0, até 4 casas. |
+| `taxa.tetoAplicado` | booleano | não | Padrão `false`. |
+| `sistema` | texto | sim | `PRICE` ou `SAC`. |
+| `resumo.totalJuros` | número | sim | Soma dos `juros` do calendário. Não é gravado. |
+| `resumo.totalPago` | número | sim | Soma dos `valor` do calendário. Não é gravado. |
+| `encargos.iof.diario`, `encargos.iof.adicional` | número | sim | ≥ 0, até 2 casas. |
+| `encargos.iof.total` | número | sim | `diario + adicional`. |
+| `encargos.tarifaCadastro` | número | sim | ≥ 0, até 2 casas. |
+| `encargos.total` | número | sim | `iof.total + tarifaCadastro`. |
+| `valorLiberado` | número | sim | `condicoes.valor - encargos.total`, maior que zero. |
+| `cet.mensalPercentual`, `cet.anualPercentual` | número | sim | Percentual, ≥ 0, até 4 casas. |
+| `calendario` | lista | sim | Ver abaixo. |
 
-Os campos de texto têm os espaços das pontas removidos. `tipoPessoa`, `decisao` e `sistemaAmortizacao` são convertidos para maiúsculas antes da validação.
+Os campos de texto têm os espaços das pontas removidos. `identificador`, `estado`, `tipoPessoa`, `produto.codigo`, `faixaRisco` e `sistema` são convertidos para maiúsculas antes da validação.
 
-### Response `201 Created`
+Aceitos e ignorados: `operacao.id`, `operacao.criadoEm`, `condicoes.primeiroRelacionamento`, `resumo.parcelaFixa`, `demonstrativo` e `calendario[].diasCorridos`.
 
-A operação criada, com o cronograma completo em `parcelas` (exemplo abreviado):
+### Conferência do calendário
+
+O calendário não é recalculado, mas precisa fechar:
+
+- uma parcela por mês de `prazoMeses`, com `numero` de `1` a `n`, em ordem;
+- `vencimento` no formato `YYYY-MM-DD`, estritamente crescente, o primeiro depois da `dataLiberacao`;
+- valores sem fração de centavo e `valor = amortizacao + juros`;
+- `saldoDevedor` = saldo anterior − `amortizacao`, começando em `condicoes.valor` e terminando em `0`.
+
+### Response `201 Created` / `200 OK`
+
+`201` quando a operação foi criada, com o header `Location: /operacoes/OP-2026-0001`; `200` quando o identificador já existia (nada é gravado). O corpo é o mesmo nos dois casos:
 
 ```json
 {
-  "id": "8524e7b3-7178-4aa6-99f0-eca1bff40de4",
-  "numeroOperacao": "OP-2026-000005",
-  "clienteId": "12345678901",
-  "tipoPessoa": "PF",
+  "id": 1,
+  "numeroOperacao": "OP-2026-0001",
   "status": "ATIVA",
-  "dataAprovacao": "2026-09-25",
-  "saldoDevedor": 15000,
-  "condicoesFinanceiras": {
-    "valorAprovado": 15000,
-    "prazoMeses": 24,
-    "quantidadeParcelas": 24,
-    "taxaJuros": 0.0199,
-    "sistemaAmortizacao": "PRICE",
-    "primeiroVencimento": "2026-10-25"
-  },
-  "contextoScore": {
-    "scoreFinal": 872,
-    "faixaRisco": "EXCELENTE",
-    "probabilidadeDefault": 0.0128,
-    "modelo": "SCORE_PF v1.1.0",
-    "motivo": "Score 872 atende ao mínimo para aprovação automática."
-  },
-  "criadoEm": "2026-09-25T02:27:23Z",
-  "parcelas": [
-    { "numero": 1, "vencimento": "2026-10-25", "valorParcela": 792.17, "amortizacao": 493.67, "juros": 298.5, "saldoDevedor": 14506.33, "status": "PENDENTE" },
-    { "numero": 2, "vencimento": "2026-11-25", "valorParcela": 792.17, "amortizacao": 503.49, "juros": 288.68, "saldoDevedor": 14002.84, "status": "PENDENTE" },
-    { "numero": 24, "vencimento": "2028-09-25", "valorParcela": 792.14, "amortizacao": 776.68, "juros": 15.46, "saldoDevedor": 0, "status": "PENDENTE" }
-  ]
+  "criadoEm": "2026-10-10T17:32:14Z"
 }
 ```
-
-- `contextoScore` **é omitido** da resposta quando não foi enviado.
-- Na última parcela, o valor pode diferir alguns centavos das demais, porque ela absorve os arredondamentos. É por isso que o exemplo mostra `792.14`.
 
 ---
 
 ## `GET /operacoes`
 
-Lista todas as operações, da mais recente para a mais antiga. O formato de cada item é o mesmo da resposta do POST, **sem** o campo `parcelas`. Sem operações cadastradas, devolve `[]`.
+Lista todas as operações, da mais recente para a mais antiga, no mesmo formato do `GET /operacoes/:identificador`. Sem operações cadastradas, devolve `[]`.
 
-## `GET /operacoes/:id`
+## `GET /operacoes/:identificador`
 
-Situação atual da operação: mesmo formato do item da listagem.
+Situação atual da operação, com todos os dados registrados:
 
 ```text
-GET /operacoes/8524e7b3-7178-4aa6-99f0-eca1bff40de4
-GET /operacoes/OP-2026-000005
+GET /operacoes/OP-2026-0001
+GET /operacoes/1              (pelo id interno, também aceito)
 ```
 
-Na Fase 1 o `status` é sempre `ATIVA` e o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
+```json
+{
+  "id": 1,
+  "numeroOperacao": "OP-2026-0001",
+  "clienteId": "52998224725",
+  "tipoPessoa": "PF",
+  "status": "ATIVA",
+  "definidoEm": "2026-10-08T18:12:40Z",
+  "dataLiberacao": "2026-10-30",
+  "saldoDevedor": 10000,
+  "produto": {
+    "codigo": "CONSIGNADO_INSS",
+    "nome": "Crédito pessoal consignado INSS",
+    "modalidadeBcb": "Crédito pessoal consignado INSS - Prefixado"
+  },
+  "condicoesFinanceiras": {
+    "valorAprovado": 10000,
+    "prazoMeses": 12,
+    "quantidadeParcelas": 12,
+    "taxaJuros": 0.0185,
+    "taxaJurosAnual": 0.246,
+    "faixaRisco": "B",
+    "tetoAplicado": true,
+    "sistemaAmortizacao": "PRICE",
+    "primeiroVencimento": "2026-11-30"
+  },
+  "encargos": {
+    "iof": { "diario": 167.65, "adicional": 38, "total": 205.65 },
+    "tarifaCadastro": 50,
+    "total": 255.65
+  },
+  "valorLiberado": 9744.35,
+  "cet": { "mensal": 0.0227, "anual": 0.3089 },
+  "criadoEm": "2026-10-10T17:32:14Z"
+}
+```
 
-## `GET /operacoes/:id/parcelas`
+- `definidoEm` saiu 3 horas depois do enviado porque `15:12:40` em GMT-03:00 é `18:12:40` em UTC.
+- O `saldoDevedor` começa no valor cheio: os encargos são descontados na liberação, não financiados.
+- Por enquanto o `status` é sempre `ATIVA` e o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
+
+## `GET /operacoes/:identificador/parcelas`
 
 Cronograma completo, ordenado por `numero`:
 
 ```json
 [
-  { "numero": 1, "vencimento": "2026-10-25", "valorParcela": 792.17, "amortizacao": 493.67, "juros": 298.5, "saldoDevedor": 14506.33, "status": "PENDENTE" }
+  { "numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "PENDENTE" }
 ]
 ```
 
 | Campo | Descrição |
 | --- | --- |
 | `numero` | Sequência da parcela, começando em 1. |
-| `vencimento` | Data de vencimento. |
-| `valorParcela` | `amortizacao + juros`. |
+| `vencimento` | Data de vencimento, como veio do juros (dia útil). |
+| `valorParcela` | `amortizacao + juros`. É o `valor` do calendário do juros. |
 | `amortizacao` | Parte do principal paga na parcela. |
-| `juros` | Juros do período sobre o saldo anterior. |
+| `juros` | Juros do período. |
 | `saldoDevedor` | Saldo após a parcela. É `0` na última. |
-| `status` | `PENDENTE` na Fase 1. Previstos para a Fase 2: `PAGA`, `PARCIALMENTE_PAGA` e `VENCIDA`. |
+| `status` | `PENDENTE` por enquanto. Previstos: `PAGA`, `PARCIALMENTE_PAGA` e `VENCIDA`. |
 
 ## `GET /health`
 
@@ -172,7 +217,7 @@ Cronograma completo, ordenado por `numero`:
 
 | Status | Situação |
 | --- | --- |
-| `ATIVA` | Operação registrada e em dia. Único status usado na Fase 1. |
+| `ATIVA` | Operação registrada e em dia. Único status usado por enquanto. |
 | `EM_ATRASO` | Previsto: há parcela vencida sem pagamento. |
 | `INADIMPLENTE` | Previsto: atraso acima do limite definido pelas regras. |
 | `RENEGOCIADA` | Previsto: novas condições negociadas. |
@@ -189,38 +234,56 @@ Todos os erros têm o formato:
 | HTTP | Quando | Exemplo de mensagem |
 | --- | --- | --- |
 | `400` | JSON malformado ou com tipo errado | `corpo da requisição inválido` |
-| `400` | Regra de validação violada | `apenas operações com decisao APROVADO podem ser registradas` |
-| `400` | `:id` que não é UUID nem número de operação | `identificador da operação inválido, use o id ou o numeroOperacao (ex.: OP-2026-000001)` |
+| `400` | Regra de validação violada | `apenas operações com operacao.estado DEFINIDA podem ser registradas` |
+| `400` | `:identificador` que não é número de operação nem id | `identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)` |
 | `404` | Operação não existe | `operação não encontrada` |
+| `404` | Rota que não existe | `rota não encontrada` |
+| `405` | Método não aceito numa rota que existe (ex.: `DELETE /operacoes/1`). O header `Allow` traz os métodos aceitos. | `método não permitido nesta rota` |
 
 Mensagens de validação do `POST /operacoes`:
 
 | Mensagem |
 | --- |
-| `clienteId não pode ser vazio` |
-| `clienteId deve ter no máximo 20 caracteres` |
-| `tipoPessoa deve ser PF ou PJ` |
-| `apenas operações com decisao APROVADO podem ser registradas` |
-| `dataAprovacao deve estar no formato YYYY-MM-DD` |
-| `primeiroVencimento deve estar no formato YYYY-MM-DD` |
-| `primeiroVencimento deve ser posterior à dataAprovacao` |
-| `valorAprovado deve ser maior que zero` |
-| `valorAprovado deve ter no máximo 2 casas decimais` |
-| `quantidadeParcelas deve ser maior que zero` |
-| `quantidadeParcelas deve ser no máximo 420` |
-| `prazoMeses deve ser igual a quantidadeParcelas` |
-| `taxaJuros é obrigatória` |
-| `taxaJuros deve ser maior ou igual a zero` |
-| `taxaJuros deve ser a taxa mensal em decimal, ex.: 0.0199 para 1,99% ao mês` |
-| `taxaJuros deve ter no máximo 6 casas decimais` |
-| `sistemaAmortizacao deve ser PRICE ou SAC` |
-| `contextoScore.scoreFinal deve ser maior ou igual a zero` |
-| `contextoScore.probabilidadeDefault deve estar entre 0 e 1` |
-| `contextoScore.faixaRisco deve ter no máximo 30 caracteres` |
-| `contextoScore.modelo deve ter no máximo 50 caracteres` |
+| `operacao.identificador não pode ser vazio` |
+| `operacao.identificador deve estar no formato OP-AAAA-NNNN` |
+| `apenas operações com operacao.estado DEFINIDA podem ser registradas` |
+| `operacao.definidoEm deve estar no formato YYYY-MM-DD HH:MM:SS ou ISO-8601 com fuso` |
+| `cliente.tipoPessoa deve ser PF ou PJ` |
+| `cliente.documento deve ter apenas dígitos` |
+| `cliente.documento deve ter 11 dígitos para PF e 14 para PJ` |
+| `produto.codigo` / `produto.nome` / `produto.modalidadeBcb` / `taxa.faixaRisco` `não pode ser vazio` |
+| `produto.codigo` / `produto.nome` / `produto.modalidadeBcb` / `taxa.faixaRisco` `deve ter no máximo N caracteres` |
+| `condicoes.valor deve ser maior que zero` |
+| `condicoes.valor deve ter no máximo 2 casas decimais` |
+| `condicoes.prazoMeses deve estar entre 1 e 420` |
+| `condicoes.dataLiberacao deve estar no formato YYYY-MM-DD` |
+| `taxa.taxaFinalMes` / `taxa.taxaFinalAno` / `cet.mensalPercentual` / `cet.anualPercentual` `é obrigatório` |
+| `taxa.taxaFinalMes` / `taxa.taxaFinalAno` / `cet.mensalPercentual` / `cet.anualPercentual` `deve ser maior ou igual a zero` |
+| `taxa.taxaFinalMes` / `taxa.taxaFinalAno` / `cet.mensalPercentual` / `cet.anualPercentual` `deve ter no máximo 4 casas decimais` |
+| `taxa.taxaFinalMes deve ser o percentual mensal, ex.: 1.85 para 1,85% ao mês` |
+| `sistema deve ser PRICE ou SAC` |
+| `encargos.*` / `valorLiberado` / `resumo.*` `deve ser maior ou igual a zero` |
+| `encargos.*` / `valorLiberado` / `resumo.*` `deve ter no máximo 2 casas decimais` |
+| `encargos.iof.total deve ser diario + adicional` |
+| `encargos.total deve ser iof.total + tarifaCadastro` |
+| `valorLiberado deve ser condicoes.valor - encargos.total` |
+| `valorLiberado deve ser maior que zero` |
+| `calendario não pode ser vazio` |
+| `calendario deve ter no máximo 420 parcelas` |
+| `calendario deve ter uma parcela por mês de condicoes.prazoMeses` |
+| `calendario: parcela na posição N deveria ter numero N` |
+| `calendario: parcela N com vencimento fora do formato YYYY-MM-DD` |
+| `calendario: parcela N deve vencer depois da anterior e da dataLiberacao` |
+| `calendario: parcela N com valor negativo ou com mais de 2 casas decimais` |
+| `calendario: parcela N com valor zerado` |
+| `calendario: parcela N com valor diferente de amortizacao + juros` |
+| `calendario: parcela N com saldoDevedor X, esperado Y` |
+| `calendario: soma das amortizações X diferente de condicoes.valor Y` |
+| `resumo.totalJuros deve ser a soma dos juros do calendario` |
+| `resumo.totalPago deve ser a soma do valor das parcelas do calendario` |
 
 > **Limitação conhecida:** falhas inesperadas do banco também são devolvidas como `400`, com a mensagem original do erro. Separá-las em `500` está previsto ([ADR-002](../adr/ADR-002-arquitetura-em-camadas.md)).
 
 ## Idempotência
 
-O serviço **não** é idempotente: reenviar o mesmo `POST /operacoes` cria uma nova operação, com novo `id` e novo `numeroOperacao`. Ver [ADR-003](../adr/ADR-003-id-gerado-pelo-servico.md).
+O `POST /operacoes` é idempotente pelo `operacao.identificador`. Reenviar o mesmo identificador (por timeout, por exemplo) não cria outra operação: a resposta é `200` com a confirmação da operação já gravada. Dois envios simultâneos também resultam em uma única operação, garantida pela constraint `UNIQUE` do `numero_operacao`. Ver [ADR-009](../adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md).
