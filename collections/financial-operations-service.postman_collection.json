@@ -1,0 +1,930 @@
+{
+  "info": {
+    "_postman_id": "f9246416-8c2c-553c-9f42-198cfd941eeb",
+    "name": "financial-operations-service",
+    "description": "Coleção do financial-operations-service (:8083). Abre no Postman (Import) e no Bruno (Import Collection > Postman Collection).\n\nRode a coleção inteira, na ordem. Os payloads são exatamente os do juros: a operação PRICE usa o identificador OP-2026-0001 e a SAC, OP-2026-0002, e o numeroOperacao que volta é sempre o mesmo que foi enviado.\n\nNa primeira execução as duas operações são criadas (201). Nas seguintes elas já existem e a resposta é 200 (reenvio), sem gravar de novo. Os dois casos passam nos testes. Para ver o 201 de novo, use um banco vazio.\n\nAs consultas são feitas pelo identificador do juros (/operacoes/OP-2026-0001), que é o jeito normal de buscar. O id interno também é aceito: veja \"Buscar operação pelo id interno\".\n\nO baseUrl padrão é http://localhost:8083. Para apontar para outra máquina, importe o ambiente local.postman_environment.json e troque o baseUrl, ou edite a variável da coleção.\n\nPayload de exemplo do serviço de juros: examples/juros_inbound.json.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 200\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Operações",
+      "item": [
+        {
+          "name": "Criar operação (PRICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 na primeira execução, 200 nas seguintes (operação já registrada)\", function () {",
+                  "  pm.expect([201, 200]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"resposta só confirma o registro\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(Object.keys(body).sort().join(\",\")).to.equal(\"criadoEm,id,numeroOperacao,status\");",
+                  "  pm.expect(body.status).to.equal(\"ATIVA\");",
+                  "});",
+                  "",
+                  "pm.test(\"numeroOperacao é exatamente o identificador enviado pelo juros\", function () {",
+                  "  pm.expect(pm.response.json().numeroOperacao).to.equal(\"OP-2026-0001\");",
+                  "});",
+                  "",
+                  "// guarda o id interno pro reenvio e pra busca pelo id; as outras consultas usam o identificador.",
+                  "pm.collectionVariables.set(\"operacaoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-0001\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Payload de examples/juros_inbound.json, exatamente como o juros envia (identificador OP-2026-0001). Na primeira execução cria a operação (201); nas seguintes ela já existe e a resposta é 200, sem gravar de novo. Guarda o id interno para a consulta \"Buscar operação pelo id interno\"."
+          }
+        },
+        {
+          "name": "Reenviar operação (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"mesma operação, sem duplicar\", function () {",
+                  "  // variável de coleção volta como texto, então compara o id como texto.",
+                  "  pm.expect(String(pm.response.json().id)).to.equal(String(pm.collectionVariables.get(\"operacaoId\")));",
+                  "  pm.expect(pm.response.json().numeroOperacao).to.equal(\"OP-2026-0001\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-0001\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Mesmo payload e mesmo identificador do \"Criar operação (PRICE)\". Simula o juros reenviando depois de um timeout: nada é gravado de novo e a resposta confirma a operação que já existia."
+          }
+        },
+        {
+          "name": "Criar operação (SAC)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"201 na primeira execução, 200 nas seguintes (operação já registrada)\", function () {",
+                  "  pm.expect([201, 200]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"resposta só confirma o registro\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(Object.keys(body).sort().join(\",\")).to.equal(\"criadoEm,id,numeroOperacao,status\");",
+                  "  pm.expect(body.status).to.equal(\"ATIVA\");",
+                  "});",
+                  "",
+                  "pm.test(\"numeroOperacao é exatamente o identificador enviado pelo juros\", function () {",
+                  "  pm.expect(pm.response.json().numeroOperacao).to.equal(\"OP-2026-0002\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-0002\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"SAC\",\n  \"resumo\": {\n    \"totalJuros\": 1202.5,\n    \"totalPago\": 11202.5\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 162.22,\n      \"adicional\": 38,\n      \"total\": 200.22\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 250.22\n  },\n  \"valorLiberado\": 9749.78,\n  \"cet\": {\n    \"anualPercentual\": 30.96,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 833.33, \"juros\": 185, \"valor\": 1018.33, \"saldoDevedor\": 9166.67, \"vencimento\": \"2026-11-30\"},\n    {\"numero\": 2, \"amortizacao\": 833.33, \"juros\": 169.58, \"valor\": 1002.91, \"saldoDevedor\": 8333.34, \"vencimento\": \"2026-12-30\"},\n    {\"numero\": 3, \"amortizacao\": 833.33, \"juros\": 154.17, \"valor\": 987.5, \"saldoDevedor\": 7500.01, \"vencimento\": \"2027-02-01\"},\n    {\"numero\": 4, \"amortizacao\": 833.33, \"juros\": 138.75, \"valor\": 972.08, \"saldoDevedor\": 6666.68, \"vencimento\": \"2027-03-01\"},\n    {\"numero\": 5, \"amortizacao\": 833.33, \"juros\": 123.33, \"valor\": 956.66, \"saldoDevedor\": 5833.35, \"vencimento\": \"2027-03-30\"},\n    {\"numero\": 6, \"amortizacao\": 833.33, \"juros\": 107.92, \"valor\": 941.25, \"saldoDevedor\": 5000.02, \"vencimento\": \"2027-04-30\"},\n    {\"numero\": 7, \"amortizacao\": 833.33, \"juros\": 92.5, \"valor\": 925.83, \"saldoDevedor\": 4166.69, \"vencimento\": \"2027-05-31\"},\n    {\"numero\": 8, \"amortizacao\": 833.33, \"juros\": 77.08, \"valor\": 910.41, \"saldoDevedor\": 3333.36, \"vencimento\": \"2027-06-30\"},\n    {\"numero\": 9, \"amortizacao\": 833.33, \"juros\": 61.67, \"valor\": 895, \"saldoDevedor\": 2500.03, \"vencimento\": \"2027-07-30\"},\n    {\"numero\": 10, \"amortizacao\": 833.33, \"juros\": 46.25, \"valor\": 879.58, \"saldoDevedor\": 1666.7, \"vencimento\": \"2027-08-30\"},\n    {\"numero\": 11, \"amortizacao\": 833.33, \"juros\": 30.83, \"valor\": 864.16, \"saldoDevedor\": 833.37, \"vencimento\": \"2027-09-30\"},\n    {\"numero\": 12, \"amortizacao\": 833.37, \"juros\": 15.42, \"valor\": 848.79, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\"}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Operação SAC com o identificador OP-2026-0002. Na primeira execução cria (201); nas seguintes responde 200."
+          }
+        },
+        {
+          "name": "Buscar operação (PRICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"operação ativa com saldo cheio\", function () {",
+                  "  pm.expect(pm.response.json().numeroOperacao).to.equal(\"OP-2026-0001\");",
+                  "  pm.expect(pm.response.json().status).to.equal(\"ATIVA\");",
+                  "  pm.expect(pm.response.json().saldoDevedor).to.equal(10000);",
+                  "});",
+                  "",
+                  "pm.test(\"taxas em fração\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.condicoesFinanceiras.taxaJuros).to.equal(0.0185);",
+                  "  pm.expect(body.condicoesFinanceiras.taxaJurosAnual).to.equal(0.246);",
+                  "  pm.expect(body.cet.anual).to.equal(0.3089);",
+                  "});",
+                  "",
+                  "pm.test(\"encargos descontados na liberação\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.encargos.total).to.equal(255.65);",
+                  "  pm.expect(body.valorLiberado).to.equal(9744.35);",
+                  "});",
+                  "",
+                  "pm.test(\"definidoEm sem fuso vira GMT-03:00, devolvido em UTC\", function () {",
+                  "  pm.expect(pm.response.json().definidoEm).to.equal(\"2026-10-08T18:12:40Z\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001"
+              ]
+            },
+            "description": "Consulta pelo identificador do juros, que é o jeito normal de buscar. É aqui que ficam os dados completos da operação."
+          }
+        },
+        {
+          "name": "Listar parcelas (PRICE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"calendário gravado como veio\", function () {",
+                  "  const parcelas = pm.response.json();",
+                  "  pm.expect(parcelas.length).to.equal(12);",
+                  "  pm.expect(parcelas[0].status).to.equal(\"PENDENTE\");",
+                  "  pm.expect(parcelas[0].valorParcela).to.equal(936.91);",
+                  "  pm.expect(parcelas[0].juros).to.equal(185);",
+                  "  pm.expect(parcelas[0].amortizacao).to.equal(751.91);",
+                  "  pm.expect(parcelas[2].vencimento).to.equal(\"2027-02-01\");",
+                  "  pm.expect(parcelas[11].valorParcela).to.equal(936.87);",
+                  "  pm.expect(parcelas[11].saldoDevedor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "parcelas"
+              ]
+            },
+            "description": "Cronograma pelo identificador do juros."
+          }
+        },
+        {
+          "name": "Buscar operação (SAC)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"sistema e encargos da simulação SAC\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.numeroOperacao).to.equal(\"OP-2026-0002\");",
+                  "  pm.expect(body.condicoesFinanceiras.sistemaAmortizacao).to.equal(\"SAC\");",
+                  "  pm.expect(body.encargos.total).to.equal(250.22);",
+                  "  pm.expect(body.valorLiberado).to.equal(9749.78);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0002",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0002"
+              ]
+            },
+            "description": "Consulta pelo identificador do juros."
+          }
+        },
+        {
+          "name": "Listar parcelas (SAC)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"amortização constante e parcela decrescente\", function () {",
+                  "  const parcelas = pm.response.json();",
+                  "  pm.expect(parcelas.length).to.equal(12);",
+                  "  pm.expect(parcelas[0].amortizacao).to.equal(833.33);",
+                  "  pm.expect(parcelas[0].valorParcela).to.equal(1018.33);",
+                  "  pm.expect(parcelas[11].valorParcela).to.equal(848.79);",
+                  "  pm.expect(parcelas[11].saldoDevedor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0002/parcelas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0002",
+                "parcelas"
+              ]
+            },
+            "description": "Cronograma pelo identificador do juros."
+          }
+        },
+        {
+          "name": "Listar operações",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"lista com as operações criadas, sem as parcelas\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(Array.isArray(body)).to.equal(true);",
+                  "  pm.expect(body.length > 0).to.equal(true);",
+                  "  pm.expect(body[0].parcelas).to.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar operação pelo id interno",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"mesma operação da busca pelo identificador\", function () {",
+                  "  pm.expect(pm.response.json().numeroOperacao).to.equal(\"OP-2026-0001\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/{{operacaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "{{operacaoId}}"
+              ]
+            },
+            "description": "O id interno também é aceito no lugar do identificador. Usa o id salvo pelo \"Criar operação (PRICE)\" e tem que devolver a mesma operação OP-2026-0001."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Erros",
+      "item": [
+        {
+          "name": "Estado diferente de DEFINIDA (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"apenas operações com operacao.estado DEFINIDA podem ser registradas\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-9001\",\n    \"estado\": \"SIMULADA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Documento não bate com o tipo de pessoa (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"cliente.documento deve ter 11 dígitos para PF e 14 para PJ\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-9002\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"11222333000181\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Taxa mensal ausente (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"taxa.taxaFinalMes é obrigatório\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-9003\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sistema inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"sistema deve ser PRICE ou SAC\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-9004\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"SACRE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Valor liberado não fecha com os encargos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"valorLiberado deve ser condicoes.valor - encargos.total\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-9005\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 10000,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.75, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Calendário com saldo que não fecha (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"calendario: parcela 5 com saldoDevedor 6098.7, esperado 6098.75\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2026-9006\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2026-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\"numero\": 1, \"amortizacao\": 751.91, \"juros\": 185, \"valor\": 936.91, \"saldoDevedor\": 9248.09, \"vencimento\": \"2026-11-30\", \"diasCorridos\": 31},\n    {\"numero\": 2, \"amortizacao\": 765.82, \"juros\": 171.09, \"valor\": 936.91, \"saldoDevedor\": 8482.27, \"vencimento\": \"2026-12-30\", \"diasCorridos\": 61},\n    {\"numero\": 3, \"amortizacao\": 779.99, \"juros\": 156.92, \"valor\": 936.91, \"saldoDevedor\": 7702.28, \"vencimento\": \"2027-02-01\", \"diasCorridos\": 94},\n    {\"numero\": 4, \"amortizacao\": 794.42, \"juros\": 142.49, \"valor\": 936.91, \"saldoDevedor\": 6907.86, \"vencimento\": \"2027-03-01\", \"diasCorridos\": 122},\n    {\"numero\": 5, \"amortizacao\": 809.11, \"juros\": 127.8, \"valor\": 936.91, \"saldoDevedor\": 6098.7, \"vencimento\": \"2027-03-30\", \"diasCorridos\": 151},\n    {\"numero\": 6, \"amortizacao\": 824.08, \"juros\": 112.83, \"valor\": 936.91, \"saldoDevedor\": 5274.67, \"vencimento\": \"2027-04-30\", \"diasCorridos\": 182},\n    {\"numero\": 7, \"amortizacao\": 839.33, \"juros\": 97.58, \"valor\": 936.91, \"saldoDevedor\": 4435.34, \"vencimento\": \"2027-05-31\", \"diasCorridos\": 213},\n    {\"numero\": 8, \"amortizacao\": 854.86, \"juros\": 82.05, \"valor\": 936.91, \"saldoDevedor\": 3580.48, \"vencimento\": \"2027-06-30\", \"diasCorridos\": 243},\n    {\"numero\": 9, \"amortizacao\": 870.67, \"juros\": 66.24, \"valor\": 936.91, \"saldoDevedor\": 2709.81, \"vencimento\": \"2027-07-30\", \"diasCorridos\": 273},\n    {\"numero\": 10, \"amortizacao\": 886.78, \"juros\": 50.13, \"valor\": 936.91, \"saldoDevedor\": 1823.03, \"vencimento\": \"2027-08-30\", \"diasCorridos\": 304},\n    {\"numero\": 11, \"amortizacao\": 903.18, \"juros\": 33.73, \"valor\": 936.91, \"saldoDevedor\": 919.85, \"vencimento\": \"2027-09-30\", \"diasCorridos\": 335},\n    {\"numero\": 12, \"amortizacao\": 919.85, \"juros\": 17.02, \"valor\": 936.87, \"saldoDevedor\": 0, \"vencimento\": \"2027-11-01\", \"diasCorridos\": 367}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Operação inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"operação não encontrada\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/999999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "999999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Identificador inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "abc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Número inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"operação não encontrada\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-1999-9999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-1999-9999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rota inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"rota não encontrada\");",
+                  "});",
+                  "",
+                  "pm.test(\"erro em json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.equal(\"application/json; charset=utf-8\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/naoexiste",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "naoexiste"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Método não permitido (405)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 405\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(405);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"método não permitido nesta rota\");",
+                  "});",
+                  "",
+                  "pm.test(\"erro em json\", function () {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.equal(\"application/json; charset=utf-8\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8083",
+      "type": "string"
+    },
+    {
+      "key": "operacaoId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
