@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"database/sql"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -20,45 +20,90 @@ const (
 	SistemaSAC   = "SAC"
 )
 
-// NumeroOperacao é só pra exibição, quem identifica a operação nas urls continua sendo o ID.
+// estado da operação no serviço de juros. só a operação definida (fechada com o cliente) vira contrato aqui.
+const EstadoJurosDefinida = "DEFINIDA"
+
+// NumeroOperacao é o identificador do serviço de juros, o mesmo em toda a esteira. o ID continua sendo a chave técnica.
+// todas as taxas ficam em fração (0.0185 = 1,85%).
 type Operacao struct {
-	ID                 string
+	ID                 int64
 	NumeroOperacao     string
 	ClienteID          string
 	TipoPessoa         string
 	Status             string
-	DataAprovacao      string
+	DefinidoEm         string
+	DataLiberacao      string
+	ProdutoCodigo      string
+	ProdutoNome        string
+	ModalidadeBcb      string
 	ValorAprovado      decimal.Decimal
 	PrazoMeses         int
 	QuantidadeParcelas int
 	TaxaJuros          decimal.Decimal
+	TaxaJurosAnual     decimal.Decimal
+	FaixaRisco         string
+	TetoAplicado       bool
 	SistemaAmortizacao string
 	PrimeiroVencimento string
 	SaldoDevedor       decimal.Decimal
-	ContextoScore      ContextoScore
+	IOFDiario          decimal.Decimal
+	IOFAdicional       decimal.Decimal
+	IOFTotal           decimal.Decimal
+	TarifaCadastro     decimal.Decimal
+	EncargosTotal      decimal.Decimal
+	ValorLiberado      decimal.Decimal
+	CETMensal          decimal.Decimal
+	CETAnual           decimal.Decimal
 	CriadoEm           string
 }
 
-// o contexto do score é opcional no payload, por isso os campos aceitam nulo.
-type ContextoScore struct {
-	ScoreFinal           sql.NullInt32
-	FaixaRisco           sql.NullString
-	ProbabilidadeDefault decimal.NullDecimal
-	Modelo               sql.NullString
-	Motivo               sql.NullString
-}
-
+// operação como chega do serviço de juros. as taxas vêm em percentual e o service preenche os campos derivados.
 type NovaOperacao struct {
-	ClienteID          string
-	TipoPessoa         string
-	Decisao            string
-	DataAprovacao      string
-	ValorAprovado      decimal.Decimal
-	PrazoMeses         int
-	QuantidadeParcelas int
+	Identificador string
+	Estado        string
+	DefinidoEm    string
+
+	ClienteID  string
+	TipoPessoa string
+
+	ProdutoCodigo string
+	ProdutoNome   string
+	ModalidadeBcb string
+
+	ValorAprovado decimal.Decimal
+	PrazoMeses    int
+	DataLiberacao string
+
 	// nullable pra diferenciar taxa ausente de taxa zero, senão faltar o campo viraria empréstimo sem juros.
-	TaxaJuros          decimal.NullDecimal
+	TaxaMensalPercentual decimal.NullDecimal
+	TaxaAnualPercentual  decimal.NullDecimal
+	FaixaRisco           string
+	TetoAplicado         bool
+
 	SistemaAmortizacao string
+
+	// o resumo não é gravado, só serve pra conferir o calendário.
+	TotalJuros decimal.Decimal
+	TotalPago  decimal.Decimal
+
+	IOFDiario      decimal.Decimal
+	IOFAdicional   decimal.Decimal
+	IOFTotal       decimal.Decimal
+	TarifaCadastro decimal.Decimal
+	EncargosTotal  decimal.Decimal
+	ValorLiberado  decimal.Decimal
+
+	CETMensalPercentual decimal.NullDecimal
+	CETAnualPercentual  decimal.NullDecimal
+
+	Parcelas []NovaParcela
+
+	// derivados, preenchidos pela validação.
+	DefinidoEmUTC      time.Time
+	QuantidadeParcelas int
 	PrimeiroVencimento string
-	ContextoScore      ContextoScore
+	TaxaJuros          decimal.Decimal
+	TaxaJurosAnual     decimal.Decimal
+	CETMensal          decimal.Decimal
+	CETAnual           decimal.Decimal
 }

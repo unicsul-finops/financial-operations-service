@@ -2,15 +2,20 @@ openapi: 3.0.3
 
 info:
   title: Operações Financeiras — Esteira de Crédito
-  version: 1.0.0
+  version: 2.0.0
   description: |
-    Última etapa da Esteira de Crédito (Score :8080 → Decisão :8081 → **Operações :8083**).
+    Última etapa da Esteira de Crédito (Score :8080 → Decisão :8081 → Juros → **Operações :8083**).
 
-    Recebe operações **já aprovadas** pelo grupo de Decisão, gera o identificador da operação e o cronograma de parcelas (PRICE ou SAC), e permite consultar a situação e o cronograma.
+    Recebe do serviço de juros a operação **já definida** com o cliente, com o calendário de parcelas pronto, registra a operação e permite consultar a situação e o cronograma.
 
-    - O payload do `POST /operacoes` **não** traz ID nem calendário de parcelas: os dois são gerados aqui.
-    - Valores monetários são calculados com decimal exato. No JSON saem como número, e zeros à direita não são preservados (`298.50` sai como `298.5`).
-    - Todos os erros têm o formato `{"erro": "mensagem"}`.
+    - O calendário **não** é recalculado aqui: ele é gravado como veio, depois de conferido (as contas precisam fechar).
+    - O `identificador` do juros é **obrigatório**, vira o `numeroOperacao` e identifica a operação em toda a esteira. Reenviar o mesmo identificador não grava de novo (`200`).
+    - O `POST` só confirma o registro (`id`, `numeroOperacao`, `status`, `criadoEm`). Os dados completos ficam em `GET /operacoes/{identificador}` e `GET /operacoes/{identificador}/parcelas`.
+    - As consultas são feitas pelo identificador do juros (`/operacoes/OP-2026-0001`). O `id` interno também é aceito.
+    - O juros manda as taxas em **percentual** (`1.85` = 1,85%). Nas respostas, **todas as taxas saem em fração** (`0.0185`).
+    - Data/hora sem fuso no payload é interpretada como **GMT-03:00**. Nas respostas, data/hora sai em UTC.
+    - Valores monetários são calculados com decimal exato. No JSON saem como número, e zeros à direita não são preservados (`185.00` sai como `185`).
+    - Todos os erros têm o formato `{"erro": "mensagem"}`, inclusive rota inexistente (`404`) e método não permitido (`405`).
 
 servers:
   # relativo de propósito: quem abre o swagger de outra máquina (http://IP:8083/swagger) testa contra esse mesmo IP, não contra o próprio localhost.
@@ -19,7 +24,7 @@ servers:
 
 tags:
   - name: Operações
-    description: Registro e consulta de operações aprovadas.
+    description: Registro e consulta de operações definidas no serviço de juros.
   - name: Saúde
     description: Verificação de disponibilidade.
 
@@ -40,11 +45,15 @@ paths:
   /operacoes:
     post:
       tags: [Operações]
-      summary: Registra uma operação aprovada e gera o cronograma
+      summary: Registra uma operação definida no serviço de juros
       description: |
-        Contrato combinado com o grupo de Decisão. A operação e todas as parcelas são gravadas na mesma transação.
+        Payload enviado pelo serviço de juros, com a simulação que o cliente escolheu. A operação e todas as parcelas são gravadas na mesma transação.
 
-        Não é idempotente: reenviar o mesmo payload cria outra operação, com novo `id` e novo `numeroOperacao`.
+        O `operacao.identificador` é obrigatório: sem ele a resposta é `400`, e este serviço não gera número próprio.
+
+        **Idempotente pelo `operacao.identificador`:** se ele já existir, nada é gravado e a resposta é `200` com a confirmação da operação já registrada.
+
+        A resposta só confirma o registro; o juros já tem os dados que enviou. Para consultar a operação completa e o cronograma, use os `GET`. Campos enviados pelo juros que não são usados aqui (`operacao.id`, `operacao.criadoEm`, `condicoes.primeiroRelacionamento`, `demonstrativo`, `calendario[].diasCorridos`) são aceitos e ignorados.
       operationId: criarOperacao
       requestBody:
         required: true
@@ -54,93 +63,130 @@ paths:
               $ref: "#/components/schemas/CriarOperacaoRequest"
             examples:
               price:
-                summary: PRICE com contexto do score
+                summary: PRICE (payload completo do juros, sem o demonstrativo)
                 value:
-                  clienteId: "12345678901"
-                  tipoPessoa: PF
-                  decisao: APROVADO
-                  dataAprovacao: "2026-09-25"
-                  condicoesFinanceiras:
-                    valorAprovado: 15000.00
-                    prazoMeses: 24
-                    quantidadeParcelas: 24
-                    taxaJuros: 0.0199
-                    sistemaAmortizacao: PRICE
-                    primeiroVencimento: "2026-10-25"
-                  contextoScore:
-                    scoreFinal: 872
-                    faixaRisco: EXCELENTE
-                    probabilidadeDefault: 0.0128
-                    modelo: SCORE_PF v1.1.0
-                    motivo: Score 872 atende ao mínimo para aprovação automática.
+                  operacao:
+                    id: 1
+                    identificador: OP-2026-0001
+                    estado: DEFINIDA
+                    criadoEm: "2026-10-08 14:03:22"
+                    definidoEm: "2026-10-08 15:12:40"
+                  cliente:
+                    tipoPessoa: PF
+                    documento: "52998224725"
+                  produto:
+                    codigo: CONSIGNADO_INSS
+                    nome: Crédito pessoal consignado INSS
+                    modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+                  condicoes:
+                    valor: 10000
+                    prazoMeses: 12
+                    dataLiberacao: "2026-10-30"
+                    primeiroRelacionamento: true
+                  taxa:
+                    faixaRisco: B
+                    taxaFinalMes: 1.85
+                    taxaFinalAno: 24.6
+                    tetoAplicado: true
+                  sistema: PRICE
+                  resumo:
+                    parcelaFixa: 936.91
+                    totalJuros: 1242.88
+                    totalPago: 11242.88
+                  encargos:
+                    iof:
+                      diario: 167.65
+                      adicional: 38
+                      total: 205.65
+                    tarifaCadastro: 50
+                    total: 255.65
+                  valorLiberado: 9744.35
+                  cet:
+                    anualPercentual: 30.89
+                    mensalPercentual: 2.27
+                  calendario:
+                    - { numero: 1, amortizacao: 751.91, juros: 185, valor: 936.91, saldoDevedor: 9248.09, vencimento: "2026-11-30", diasCorridos: 31 }
+                    - { numero: 2, amortizacao: 765.82, juros: 171.09, valor: 936.91, saldoDevedor: 8482.27, vencimento: "2026-12-30", diasCorridos: 61 }
+                    - { numero: 3, amortizacao: 779.99, juros: 156.92, valor: 936.91, saldoDevedor: 7702.28, vencimento: "2027-02-01", diasCorridos: 94 }
+                    - { numero: 4, amortizacao: 794.42, juros: 142.49, valor: 936.91, saldoDevedor: 6907.86, vencimento: "2027-03-01", diasCorridos: 122 }
+                    - { numero: 5, amortizacao: 809.11, juros: 127.8, valor: 936.91, saldoDevedor: 6098.75, vencimento: "2027-03-30", diasCorridos: 151 }
+                    - { numero: 6, amortizacao: 824.08, juros: 112.83, valor: 936.91, saldoDevedor: 5274.67, vencimento: "2027-04-30", diasCorridos: 182 }
+                    - { numero: 7, amortizacao: 839.33, juros: 97.58, valor: 936.91, saldoDevedor: 4435.34, vencimento: "2027-05-31", diasCorridos: 213 }
+                    - { numero: 8, amortizacao: 854.86, juros: 82.05, valor: 936.91, saldoDevedor: 3580.48, vencimento: "2027-06-30", diasCorridos: 243 }
+                    - { numero: 9, amortizacao: 870.67, juros: 66.24, valor: 936.91, saldoDevedor: 2709.81, vencimento: "2027-07-30", diasCorridos: 273 }
+                    - { numero: 10, amortizacao: 886.78, juros: 50.13, valor: 936.91, saldoDevedor: 1823.03, vencimento: "2027-08-30", diasCorridos: 304 }
+                    - { numero: 11, amortizacao: 903.18, juros: 33.73, valor: 936.91, saldoDevedor: 919.85, vencimento: "2027-09-30", diasCorridos: 335 }
+                    - { numero: 12, amortizacao: 919.85, juros: 17.02, valor: 936.87, saldoDevedor: 0, vencimento: "2027-11-01", diasCorridos: 367 }
               sac:
-                summary: SAC sem contexto do score
+                summary: SAC (só os campos usados)
                 value:
-                  clienteId: "12345678901"
-                  tipoPessoa: PF
-                  decisao: APROVADO
-                  dataAprovacao: "2026-09-25"
-                  condicoesFinanceiras:
-                    valorAprovado: 15000.00
-                    prazoMeses: 24
-                    quantidadeParcelas: 24
-                    taxaJuros: 0.0199
-                    sistemaAmortizacao: SAC
-                    primeiroVencimento: "2026-10-25"
+                  operacao:
+                    identificador: OP-2026-0002
+                    estado: DEFINIDA
+                    definidoEm: "2026-10-08 15:12:40"
+                  cliente:
+                    tipoPessoa: PF
+                    documento: "52998224725"
+                  produto:
+                    codigo: CONSIGNADO_INSS
+                    nome: Crédito pessoal consignado INSS
+                    modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+                  condicoes:
+                    valor: 10000
+                    prazoMeses: 12
+                    dataLiberacao: "2026-10-30"
+                  taxa:
+                    faixaRisco: B
+                    taxaFinalMes: 1.85
+                    taxaFinalAno: 24.6
+                    tetoAplicado: true
+                  sistema: SAC
+                  resumo:
+                    totalJuros: 1202.5
+                    totalPago: 11202.5
+                  encargos:
+                    iof:
+                      diario: 162.22
+                      adicional: 38
+                      total: 200.22
+                    tarifaCadastro: 50
+                    total: 250.22
+                  valorLiberado: 9749.78
+                  cet:
+                    anualPercentual: 30.96
+                    mensalPercentual: 2.27
+                  calendario:
+                    - { numero: 1, amortizacao: 833.33, juros: 185, valor: 1018.33, saldoDevedor: 9166.67, vencimento: "2026-11-30" }
+                    - { numero: 2, amortizacao: 833.33, juros: 169.58, valor: 1002.91, saldoDevedor: 8333.34, vencimento: "2026-12-30" }
+                    - { numero: 3, amortizacao: 833.33, juros: 154.17, valor: 987.5, saldoDevedor: 7500.01, vencimento: "2027-02-01" }
+                    - { numero: 4, amortizacao: 833.33, juros: 138.75, valor: 972.08, saldoDevedor: 6666.68, vencimento: "2027-03-01" }
+                    - { numero: 5, amortizacao: 833.33, juros: 123.33, valor: 956.66, saldoDevedor: 5833.35, vencimento: "2027-03-30" }
+                    - { numero: 6, amortizacao: 833.33, juros: 107.92, valor: 941.25, saldoDevedor: 5000.02, vencimento: "2027-04-30" }
+                    - { numero: 7, amortizacao: 833.33, juros: 92.5, valor: 925.83, saldoDevedor: 4166.69, vencimento: "2027-05-31" }
+                    - { numero: 8, amortizacao: 833.33, juros: 77.08, valor: 910.41, saldoDevedor: 3333.36, vencimento: "2027-06-30" }
+                    - { numero: 9, amortizacao: 833.33, juros: 61.67, valor: 895, saldoDevedor: 2500.03, vencimento: "2027-07-30" }
+                    - { numero: 10, amortizacao: 833.33, juros: 46.25, valor: 879.58, saldoDevedor: 1666.7, vencimento: "2027-08-30" }
+                    - { numero: 11, amortizacao: 833.33, juros: 30.83, valor: 864.16, saldoDevedor: 833.37, vencimento: "2027-09-30" }
+                    - { numero: 12, amortizacao: 833.37, juros: 15.42, valor: 848.79, saldoDevedor: 0, vencimento: "2027-11-01" }
       responses:
         "201":
-          description: Operação registrada, com o cronograma completo em `parcelas`.
+          description: Operação registrada.
+          headers:
+            Location:
+              description: Caminho da operação criada, pelo `numeroOperacao`.
+              schema:
+                type: string
+                example: /operacoes/OP-2026-0001
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OperacaoComParcelas"
-              examples:
-                price:
-                  summary: PRICE (parcelas abreviadas)
-                  value:
-                    id: 8524e7b3-7178-4aa6-99f0-eca1bff40de4
-                    numeroOperacao: OP-2026-000005
-                    clienteId: "12345678901"
-                    tipoPessoa: PF
-                    status: ATIVA
-                    dataAprovacao: "2026-09-25"
-                    saldoDevedor: 15000
-                    condicoesFinanceiras:
-                      valorAprovado: 15000
-                      prazoMeses: 24
-                      quantidadeParcelas: 24
-                      taxaJuros: 0.0199
-                      sistemaAmortizacao: PRICE
-                      primeiroVencimento: "2026-10-25"
-                    contextoScore:
-                      scoreFinal: 872
-                      faixaRisco: EXCELENTE
-                      probabilidadeDefault: 0.0128
-                      modelo: SCORE_PF v1.1.0
-                      motivo: Score 872 atende ao mínimo para aprovação automática.
-                    criadoEm: "2026-09-25T02:27:23Z"
-                    parcelas:
-                      - numero: 1
-                        vencimento: "2026-10-25"
-                        valorParcela: 792.17
-                        amortizacao: 493.67
-                        juros: 298.5
-                        saldoDevedor: 14506.33
-                        status: PENDENTE
-                      - numero: 2
-                        vencimento: "2026-11-25"
-                        valorParcela: 792.17
-                        amortizacao: 503.49
-                        juros: 288.68
-                        saldoDevedor: 14002.84
-                        status: PENDENTE
-                      - numero: 24
-                        vencimento: "2028-09-25"
-                        valorParcela: 792.14
-                        amortizacao: 776.68
-                        juros: 15.46
-                        saldoDevedor: 0
-                        status: PENDENTE
+                $ref: "#/components/schemas/OperacaoCriada"
+        "200":
+          description: O `identificador` já estava registrado (reenvio). Nada foi gravado; a resposta confirma a operação existente.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperacaoCriada"
         "400":
           description: JSON malformado ou regra de validação violada.
           content:
@@ -152,26 +198,30 @@ paths:
                   summary: JSON malformado ou com tipo errado
                   value:
                     erro: corpo da requisição inválido
-                naoAprovada:
-                  summary: Decisão diferente de APROVADO
+                identificadorAusente:
+                  summary: operacao.identificador não enviado
                   value:
-                    erro: apenas operações com decisao APROVADO podem ser registradas
+                    erro: operacao.identificador não pode ser vazio
+                naoDefinida:
+                  summary: Estado diferente de DEFINIDA
+                  value:
+                    erro: apenas operações com operacao.estado DEFINIDA podem ser registradas
+                documento:
+                  summary: Documento não bate com o tipo de pessoa
+                  value:
+                    erro: cliente.documento deve ter 11 dígitos para PF e 14 para PJ
                 taxaAusente:
-                  summary: taxaJuros não enviada
+                  summary: taxa.taxaFinalMes não enviada
                   value:
-                    erro: taxaJuros é obrigatória
-                taxaEmPorcentagem:
-                  summary: Taxa enviada em porcentagem (1.99 em vez de 0.0199)
+                    erro: taxa.taxaFinalMes é obrigatório
+                valorLiberado:
+                  summary: Valor liberado não fecha com os encargos
                   value:
-                    erro: "taxaJuros deve ser a taxa mensal em decimal, ex.: 0.0199 para 1,99% ao mês"
-                prazoDiferente:
-                  summary: prazoMeses diferente de quantidadeParcelas
+                    erro: valorLiberado deve ser condicoes.valor - encargos.total
+                calendario:
+                  summary: Saldo do calendário não encadeia
                   value:
-                    erro: prazoMeses deve ser igual a quantidadeParcelas
-                vencimentoAnterior:
-                  summary: Primeiro vencimento não é posterior à aprovação
-                  value:
-                    erro: primeiroVencimento deve ser posterior à dataAprovacao
+                    erro: "calendario: parcela 5 com saldoDevedor 6098.7, esperado 6098.75"
 
     get:
       tags: [Operações]
@@ -190,11 +240,11 @@ paths:
         "400":
           $ref: "#/components/responses/ErroInterno"
 
-  /operacoes/{id}:
+  /operacoes/{identificador}:
     get:
       tags: [Operações]
       summary: Consulta a situação de uma operação
-      description: Na Fase 1 o `status` é sempre `ATIVA` e o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
+      description: Por enquanto o `status` é sempre `ATIVA` e o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
       operationId: buscarOperacao
       parameters:
         - $ref: "#/components/parameters/IdentificadorOperacao"
@@ -205,12 +255,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Operacao"
+              examples:
+                price:
+                  $ref: "#/components/examples/OperacaoPrice"
         "400":
           $ref: "#/components/responses/IdentificadorInvalido"
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
-  /operacoes/{id}/parcelas:
+  /operacoes/{identificador}/parcelas:
     get:
       tags: [Operações]
       summary: Consulta o cronograma de parcelas
@@ -235,31 +288,70 @@ paths:
 components:
   parameters:
     IdentificadorOperacao:
-      name: id
+      name: identificador
       in: path
       required: true
       description: |
-        O `id` (UUID) **ou** o `numeroOperacao` (`OP-AAAA-NNNNNN`). O número é aceito em maiúsculas ou minúsculas.
+        O `numeroOperacao` (`OP-AAAA-NNNN`), que é o identificador do juros e o jeito normal de consultar. Aceito em maiúsculas ou minúsculas. O `id` interno (inteiro) também é aceito.
       schema:
         type: string
-        pattern: '^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[Oo][Pp]-[0-9]{4}-[0-9]{6,})$'
+        pattern: '^([1-9][0-9]*|[Oo][Pp]-[0-9]{4}-[0-9]{4,})$'
       examples:
         numero:
-          summary: Pelo número da operação
-          value: OP-2026-000001
-        uuid:
-          summary: Pelo UUID
-          value: 8524e7b3-7178-4aa6-99f0-eca1bff40de4
+          summary: Pelo identificador do juros (recomendado)
+          value: OP-2026-0001
+        id:
+          summary: Pelo id interno
+          value: "1"
+
+  examples:
+    OperacaoPrice:
+      summary: Operação PRICE
+      value:
+        id: 1
+        numeroOperacao: OP-2026-0001
+        clienteId: "52998224725"
+        tipoPessoa: PF
+        status: ATIVA
+        definidoEm: "2026-10-08T18:12:40Z"
+        dataLiberacao: "2026-10-30"
+        saldoDevedor: 10000
+        produto:
+          codigo: CONSIGNADO_INSS
+          nome: Crédito pessoal consignado INSS
+          modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+        condicoesFinanceiras:
+          valorAprovado: 10000
+          prazoMeses: 12
+          quantidadeParcelas: 12
+          taxaJuros: 0.0185
+          taxaJurosAnual: 0.246
+          faixaRisco: B
+          tetoAplicado: true
+          sistemaAmortizacao: PRICE
+          primeiroVencimento: "2026-11-30"
+        encargos:
+          iof:
+            diario: 167.65
+            adicional: 38
+            total: 205.65
+          tarifaCadastro: 50
+          total: 255.65
+        valorLiberado: 9744.35
+        cet:
+          mensal: 0.0227
+          anual: 0.3089
+        criadoEm: "2026-10-08T18:13:02Z"
 
   responses:
     IdentificadorInvalido:
-      description: O identificador não é um UUID nem um número de operação.
+      description: O identificador não é um id nem um número de operação.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Erro"
           example:
-            erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: OP-2026-000001)"
+            erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
     NaoEncontrada:
       description: Operação não encontrada.
       content:
@@ -294,170 +386,349 @@ components:
           description: Mensagem em português, direcionada a quem consome a API.
           example: operação não encontrada
 
+    Dinheiro:
+      type: number
+      minimum: 0
+      description: Valor em reais, com no máximo 2 casas decimais.
+
+    Percentual:
+      type: number
+      minimum: 0
+      description: Percentual como o juros envia (`1.85` = 1,85%), com no máximo 4 casas decimais.
+
     CriarOperacaoRequest:
       type: object
-      required: [clienteId, tipoPessoa, decisao, dataAprovacao, condicoesFinanceiras]
+      description: Payload do serviço de juros. Campos não listados aqui são aceitos e ignorados.
+      required: [operacao, cliente, produto, condicoes, taxa, sistema, resumo, encargos, valorLiberado, cet, calendario]
       properties:
-        clienteId:
-          type: string
-          minLength: 1
-          maxLength: 20
-          description: CPF/CNPJ do cliente. O formato não é validado aqui (é responsabilidade do Score).
-          example: "12345678901"
-        tipoPessoa:
-          type: string
-          enum: [PF, PJ]
-          description: Aceito também em minúsculas.
-        decisao:
-          type: string
-          enum: [APROVADO]
-          description: Somente operações aprovadas podem ser registradas.
-        dataAprovacao:
-          type: string
-          format: date
-          example: "2026-09-25"
-        condicoesFinanceiras:
-          $ref: "#/components/schemas/CondicoesFinanceirasRequest"
-        contextoScore:
-          $ref: "#/components/schemas/ContextoScore"
-
-    CondicoesFinanceirasRequest:
-      type: object
-      required: [valorAprovado, prazoMeses, quantidadeParcelas, taxaJuros, sistemaAmortizacao, primeiroVencimento]
-      properties:
-        valorAprovado:
-          type: number
-          minimum: 0
-          exclusiveMinimum: true
-          description: Maior que zero, com no máximo 2 casas decimais.
-          example: 15000.00
-        prazoMeses:
-          type: integer
-          minimum: 1
-          maximum: 420
-          description: Deve ser igual a `quantidadeParcelas` (cronograma mensal).
-          example: 24
-        quantidadeParcelas:
-          type: integer
-          minimum: 1
-          maximum: 420
-          example: 24
-        taxaJuros:
-          type: number
-          minimum: 0
-          maximum: 1
-          exclusiveMaximum: true
-          description: Taxa **mensal em decimal** (`0.0199` = 1,99% ao mês), com no máximo 6 casas decimais.
-          example: 0.0199
-        sistemaAmortizacao:
+        operacao:
+          type: object
+          required: [identificador, estado, definidoEm]
+          properties:
+            identificador:
+              type: string
+              pattern: '^[Oo][Pp]-[0-9]{4}-[0-9]{4,}$'
+              description: Identificador da operação em toda a esteira. Vira o `numeroOperacao`. Repetido = reenvio (`200`).
+              example: OP-2026-0001
+            estado:
+              type: string
+              enum: [DEFINIDA]
+              description: Só operações definidas com o cliente são registradas. Aceito também em minúsculas.
+            definidoEm:
+              type: string
+              description: "`YYYY-MM-DD HH:MM:SS`, interpretado como GMT-03:00, ou ISO-8601 com fuso (`2026-10-08T15:12:40-03:00`)."
+              example: "2026-10-08 15:12:40"
+        cliente:
+          type: object
+          required: [tipoPessoa, documento]
+          properties:
+            tipoPessoa:
+              type: string
+              enum: [PF, PJ]
+              description: Aceito também em minúsculas.
+            documento:
+              type: string
+              pattern: '^[0-9]{11}([0-9]{3})?$'
+              description: CPF (11 dígitos, PF) ou CNPJ (14 dígitos, PJ), só números. Vira o `clienteId`.
+              example: "52998224725"
+        produto:
+          type: object
+          required: [codigo, nome, modalidadeBcb]
+          properties:
+            codigo:
+              type: string
+              maxLength: 50
+              example: CONSIGNADO_INSS
+            nome:
+              type: string
+              maxLength: 100
+              example: Crédito pessoal consignado INSS
+            modalidadeBcb:
+              type: string
+              maxLength: 150
+              example: Crédito pessoal consignado INSS - Prefixado
+        condicoes:
+          type: object
+          required: [valor, prazoMeses, dataLiberacao]
+          properties:
+            valor:
+              allOf:
+                - $ref: "#/components/schemas/Dinheiro"
+              description: Valor do crédito, maior que zero. Vira o `valorAprovado` e o `saldoDevedor` inicial.
+              example: 10000
+            prazoMeses:
+              type: integer
+              minimum: 1
+              maximum: 420
+              description: Deve ser igual à quantidade de parcelas do `calendario`.
+              example: 12
+            dataLiberacao:
+              type: string
+              format: date
+              description: O primeiro vencimento deve ser posterior a ela.
+              example: "2026-10-30"
+        taxa:
+          type: object
+          required: [faixaRisco, taxaFinalMes, taxaFinalAno, tetoAplicado]
+          properties:
+            faixaRisco:
+              type: string
+              maxLength: 10
+              description: Faixa de preço do juros (não é a faixa de risco do score).
+              example: B
+            taxaFinalMes:
+              allOf:
+                - $ref: "#/components/schemas/Percentual"
+              maximum: 100
+              exclusiveMaximum: true
+              example: 1.85
+            taxaFinalAno:
+              allOf:
+                - $ref: "#/components/schemas/Percentual"
+              example: 24.6
+            tetoAplicado:
+              type: boolean
+              example: true
+        sistema:
           type: string
           enum: [PRICE, SAC]
-          description: "`PRICE`: parcela fixa. `SAC`: amortização fixa e parcela decrescente. Aceito também em minúsculas."
-        primeiroVencimento:
+          description: Sistema que o cliente escolheu. Aceito também em minúsculas.
+        resumo:
+          type: object
+          required: [totalJuros, totalPago]
+          description: Não é gravado; só é conferido contra o `calendario`.
+          properties:
+            totalJuros:
+              allOf:
+                - $ref: "#/components/schemas/Dinheiro"
+              description: Soma dos `juros` do calendário.
+              example: 1242.88
+            totalPago:
+              allOf:
+                - $ref: "#/components/schemas/Dinheiro"
+              description: Soma dos `valor` do calendário.
+              example: 11242.88
+        encargos:
+          type: object
+          required: [iof, tarifaCadastro, total]
+          description: Descontados na liberação, não entram no saldo devedor.
+          properties:
+            iof:
+              type: object
+              required: [diario, adicional, total]
+              properties:
+                diario:
+                  $ref: "#/components/schemas/Dinheiro"
+                adicional:
+                  $ref: "#/components/schemas/Dinheiro"
+                total:
+                  allOf:
+                    - $ref: "#/components/schemas/Dinheiro"
+                  description: "`diario + adicional`."
+            tarifaCadastro:
+              $ref: "#/components/schemas/Dinheiro"
+            total:
+              allOf:
+                - $ref: "#/components/schemas/Dinheiro"
+              description: "`iof.total + tarifaCadastro`."
+        valorLiberado:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "`condicoes.valor - encargos.total`, maior que zero."
+          example: 9744.35
+        cet:
+          type: object
+          required: [mensalPercentual, anualPercentual]
+          properties:
+            mensalPercentual:
+              allOf:
+                - $ref: "#/components/schemas/Percentual"
+              example: 2.27
+            anualPercentual:
+              allOf:
+                - $ref: "#/components/schemas/Percentual"
+              example: 30.89
+        calendario:
+          type: array
+          minItems: 1
+          maxItems: 420
+          description: |
+            Gravado como veio, sem recálculo. Precisa fechar: `numero` de 1 a n, vencimentos crescentes (o primeiro depois da `dataLiberacao`), `valor = amortizacao + juros`, `saldoDevedor` encadeado a partir de `condicoes.valor` e `0` na última.
+          items:
+            $ref: "#/components/schemas/ParcelaJuros"
+
+    ParcelaJuros:
+      type: object
+      required: [numero, amortizacao, juros, valor, saldoDevedor, vencimento]
+      properties:
+        numero:
+          type: integer
+          minimum: 1
+          example: 1
+        amortizacao:
+          $ref: "#/components/schemas/Dinheiro"
+        juros:
+          $ref: "#/components/schemas/Dinheiro"
+        valor:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: Vira o `valorParcela`.
+        saldoDevedor:
+          $ref: "#/components/schemas/Dinheiro"
+        vencimento:
           type: string
           format: date
-          description: Posterior a `dataAprovacao`. As demais parcelas vencem mensalmente no mesmo dia; um dia 31 cai no último dia dos meses mais curtos.
-          example: "2026-10-25"
+          example: "2026-11-30"
 
-    ContextoScore:
+    OperacaoCriada:
       type: object
-      description: Opcional. Só é armazenado e devolvido nas consultas; não entra em nenhum cálculo. Omitido da resposta quando não foi enviado.
+      required: [id, numeroOperacao, status, criadoEm]
       properties:
-        scoreFinal:
+        id:
           type: integer
-          minimum: 0
-          example: 872
-        faixaRisco:
+          format: int64
+          description: Identificador técnico, sequencial, gerado por este serviço.
+          example: 1
+        numeroOperacao:
           type: string
-          maxLength: 30
-          example: EXCELENTE
-        probabilidadeDefault:
-          type: number
-          minimum: 0
-          maximum: 1
-          example: 0.0128
-        modelo:
+          pattern: '^OP-[0-9]{4}-[0-9]{4,}$'
+          example: OP-2026-0001
+        status:
+          $ref: "#/components/schemas/StatusOperacao"
+        criadoEm:
           type: string
-          maxLength: 50
-          example: SCORE_PF v1.1.0
-        motivo:
-          type: string
-          example: Score 872 atende ao mínimo para aprovação automática.
-
-    CondicoesFinanceiras:
-      type: object
-      required: [valorAprovado, prazoMeses, quantidadeParcelas, taxaJuros, sistemaAmortizacao, primeiroVencimento]
-      properties:
-        valorAprovado:
-          type: number
-          example: 15000
-        prazoMeses:
-          type: integer
-          example: 24
-        quantidadeParcelas:
-          type: integer
-          example: 24
-        taxaJuros:
-          type: number
-          example: 0.0199
-        sistemaAmortizacao:
-          type: string
-          enum: [PRICE, SAC]
-        primeiroVencimento:
-          type: string
-          format: date
-          example: "2026-10-25"
+          format: date-time
+          example: "2026-10-10T17:32:14Z"
 
     Operacao:
       type: object
-      required: [id, numeroOperacao, clienteId, tipoPessoa, status, dataAprovacao, saldoDevedor, condicoesFinanceiras, criadoEm]
+      required: [id, numeroOperacao, clienteId, tipoPessoa, status, definidoEm, dataLiberacao, saldoDevedor, produto, condicoesFinanceiras, encargos, valorLiberado, cet, criadoEm]
       properties:
         id:
-          type: string
-          format: uuid
-          description: Identificador técnico, gerado por este serviço.
-          example: 8524e7b3-7178-4aa6-99f0-eca1bff40de4
+          type: integer
+          format: int64
+          description: Identificador técnico, sequencial, gerado por este serviço.
+          example: 1
         numeroOperacao:
           type: string
-          pattern: '^OP-[0-9]{4}-[0-9]{6,}$'
-          description: Identificador legível para exibição. Sequencial; não reinicia por ano e pode ter buracos.
-          example: OP-2026-000005
+          pattern: '^OP-[0-9]{4}-[0-9]{4,}$'
+          description: O `identificador` enviado pelo serviço de juros, o mesmo em toda a esteira.
+          example: OP-2026-0001
         clienteId:
           type: string
-          example: "12345678901"
+          description: CPF ou CNPJ, só números.
+          example: "52998224725"
         tipoPessoa:
           type: string
           enum: [PF, PJ]
         status:
           $ref: "#/components/schemas/StatusOperacao"
-        dataAprovacao:
+        definidoEm:
+          type: string
+          format: date-time
+          description: Quando a operação foi definida no juros, em UTC.
+          example: "2026-10-08T18:12:40Z"
+        dataLiberacao:
           type: string
           format: date
-          example: "2026-09-25"
+          example: "2026-10-30"
         saldoDevedor:
           type: number
-          description: Na Fase 1 é igual ao `valorAprovado`.
-          example: 15000
+          description: Por enquanto é igual ao `valorAprovado`.
+          example: 10000
+        produto:
+          type: object
+          required: [codigo, nome, modalidadeBcb]
+          properties:
+            codigo:
+              type: string
+              example: CONSIGNADO_INSS
+            nome:
+              type: string
+              example: Crédito pessoal consignado INSS
+            modalidadeBcb:
+              type: string
+              example: Crédito pessoal consignado INSS - Prefixado
         condicoesFinanceiras:
           $ref: "#/components/schemas/CondicoesFinanceiras"
-        contextoScore:
-          $ref: "#/components/schemas/ContextoScore"
+        encargos:
+          type: object
+          required: [iof, tarifaCadastro, total]
+          properties:
+            iof:
+              type: object
+              required: [diario, adicional, total]
+              properties:
+                diario:
+                  type: number
+                  example: 167.65
+                adicional:
+                  type: number
+                  example: 38
+                total:
+                  type: number
+                  example: 205.65
+            tarifaCadastro:
+              type: number
+              example: 50
+            total:
+              type: number
+              example: 255.65
+        valorLiberado:
+          type: number
+          example: 9744.35
+        cet:
+          type: object
+          required: [mensal, anual]
+          description: Custo efetivo total, em fração.
+          properties:
+            mensal:
+              type: number
+              example: 0.0227
+            anual:
+              type: number
+              example: 0.3089
         criadoEm:
           type: string
           format: date-time
-          description: Momento do registro, em UTC.
-          example: "2026-09-25T02:27:23Z"
+          description: Momento do registro neste serviço, em UTC.
+          example: "2026-10-08T18:13:02Z"
 
-    OperacaoComParcelas:
-      allOf:
-        - $ref: "#/components/schemas/Operacao"
-        - type: object
-          required: [parcelas]
-          properties:
-            parcelas:
-              type: array
-              items:
-                $ref: "#/components/schemas/Parcela"
+    CondicoesFinanceiras:
+      type: object
+      required: [valorAprovado, prazoMeses, quantidadeParcelas, taxaJuros, taxaJurosAnual, faixaRisco, tetoAplicado, sistemaAmortizacao, primeiroVencimento]
+      properties:
+        valorAprovado:
+          type: number
+          example: 10000
+        prazoMeses:
+          type: integer
+          example: 12
+        quantidadeParcelas:
+          type: integer
+          example: 12
+        taxaJuros:
+          type: number
+          description: Taxa mensal em fração (`0.0185` = 1,85% ao mês).
+          example: 0.0185
+        taxaJurosAnual:
+          type: number
+          description: Taxa anual em fração.
+          example: 0.246
+        faixaRisco:
+          type: string
+          description: Faixa de preço do juros.
+          example: B
+        tetoAplicado:
+          type: boolean
+          example: true
+        sistemaAmortizacao:
+          type: string
+          enum: [PRICE, SAC]
+        primeiroVencimento:
+          type: string
+          format: date
+          example: "2026-11-30"
 
     Parcela:
       type: object
@@ -470,32 +741,32 @@ components:
         vencimento:
           type: string
           format: date
-          example: "2026-10-25"
+          example: "2026-11-30"
         valorParcela:
           type: number
-          description: "`amortizacao + juros`. A última parcela pode diferir alguns centavos, porque absorve os arredondamentos."
-          example: 792.17
+          description: "`amortizacao + juros`, como veio do juros."
+          example: 936.91
         amortizacao:
           type: number
           description: Parte do principal paga na parcela.
-          example: 493.67
+          example: 751.91
         juros:
           type: number
-          description: Juros do período sobre o saldo anterior.
-          example: 298.5
+          description: Juros do período.
+          example: 185
         saldoDevedor:
           type: number
           description: Saldo após a parcela. É `0` na última.
-          example: 14506.33
+          example: 9248.09
         status:
           $ref: "#/components/schemas/StatusParcela"
 
     StatusOperacao:
       type: string
       enum: [ATIVA, EM_ATRASO, INADIMPLENTE, RENEGOCIADA, LIQUIDADA]
-      description: Na Fase 1 toda operação é `ATIVA`. Os demais status são previstos para as próximas fases.
+      description: Por enquanto toda operação é `ATIVA`. Os demais status são previstos para as próximas fases.
 
     StatusParcela:
       type: string
       enum: [PENDENTE, PAGA, PARCIALMENTE_PAGA, VENCIDA]
-      description: Na Fase 1 toda parcela é `PENDENTE`. Os demais status são previstos para as próximas fases.
+      description: Por enquanto toda parcela é `PENDENTE`. Os demais status são previstos para as próximas fases.
