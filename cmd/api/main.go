@@ -47,6 +47,11 @@ func main() {
 func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 	router := gin.Default()
 
+	// sem isso o gin responde 404 pra método errado numa rota que existe.
+	router.HandleMethodNotAllowed = true
+	router.NoRoute(handler.RotaNaoEncontrada)
+	router.NoMethod(handler.MetodoNaoPermitido)
+
 	router.GET("/health", handler.Health)
 
 	router.POST("/operacoes", operacaoHandler.Criar)
