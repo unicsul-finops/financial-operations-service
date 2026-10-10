@@ -3,10 +3,10 @@
 Requisitos funcionais e regras de negócio do **financial-operations-service**, a última etapa da Esteira de Crédito.
 
 ```text
-Score (:8080) → Decisão (:8081) → Operações Financeiras (:8083)
+Score (:8080) → Decisão (:8081) → Juros → Operações Financeiras (:8083)
 ```
 
-Este serviço **só recebe operações já aprovadas** pelo grupo de Decisão. Ele registra a operação, gera o cronograma de pagamento e, nas próximas fases, acompanha os pagamentos até a liquidação.
+Este serviço **só recebe operações já definidas com o cliente** no serviço de juros, com o calendário de pagamento pronto. Ele confere e registra a operação e, nas próximas fases, acompanha os pagamentos até a liquidação.
 
 ## Features e fases
 
@@ -14,9 +14,9 @@ Legenda: ✅ implementado · 🔜 planejado · ⏸️ depende de alinhamento com
 
 | Feature | Descrição | Situação |
 | --- | --- | --- |
-| Receber operação | Recebe a operação aprovada pela Decisão e registra os dados financeiros no banco | ✅ Fase 1 |
-| Receber condições financeiras | Recebe valor aprovado, prazo, taxa de juros, quantidade de parcelas e demais condições | ✅ Fase 1 |
-| Gerar cronograma de parcelas | Cria o cronograma com valor, vencimento e status de cada parcela (PRICE e SAC) | ✅ Fase 1 |
+| Receber operação | Recebe a operação definida no serviço de juros e registra os dados financeiros no banco | ✅ Fase 1 |
+| Receber condições financeiras | Recebe valor, prazo, taxas, produto, encargos, valor liberado e CET | ✅ Fase 1 |
+| Registrar cronograma de parcelas | Confere e grava o calendário enviado pelo juros (PRICE ou SAC), com status de cada parcela | ✅ Fase 1 |
 | Consultar cronograma de parcelas | Visualiza todas as parcelas da operação e suas situações | ✅ Fase 1 |
 | Consultar situação da operação | Exibe o status atual da operação | ✅ Fase 1 (só `ATIVA` por enquanto) |
 | Registrar pagamento | Registra o pagamento total ou parcial de uma parcela | 🔜 |
@@ -37,31 +37,27 @@ Legenda: ✅ implementado · 🔜 planejado · ⏸️ depende de alinhamento com
 
 ### Critério da Fase 1
 
-A Fase 1 inclui apenas o que é **possível e necessário** com os dados que o payload da Decisão já entrega, sem depender de features futuras (pagamento, atraso) nem de alinhamento com outros grupos.
+A Fase 1 inclui apenas o que é **possível e necessário** com os dados que o payload do serviço de juros entrega, sem depender de features futuras (pagamento, atraso). Ela começou recebendo o payload da Decisão e calculando o cronograma aqui; no meio da fase a entrada passou a ser o payload do juros, já com o calendário ([ADR-009](../architecture/adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md)).
 
 ## Regras de negócio implementadas
 
-### RN-01 — Somente operações aprovadas
+### RN-01 — Somente operações definidas
 
-Só é registrada operação com `decisao = APROVADO`. Qualquer outro valor é recusado com `400`.
+Só é registrada operação com `operacao.estado = DEFINIDA`, ou seja, já fechada com o cliente no serviço de juros. Qualquer outro valor é recusado com `400`.
 
-### RN-02 — Identificação gerada pelo serviço
+### RN-02 — Identificação vinda do juros
 
-O payload não traz identificador. O serviço gera:
+- `numeroOperacao`: é o `operacao.identificador` do juros (`OP-AAAA-NNNN`), o mesmo em toda a esteira. É obrigatório; este serviço não gera número próprio.
+- `id`: inteiro sequencial gerado aqui, chave técnica ([ADR-011](../architecture/adr/ADR-011-id-sequencial.md)).
 
-- `id`: UUID, chave técnica ([ADR-003](../architecture/adr/ADR-003-id-gerado-pelo-servico.md));
-- `numeroOperacao`: `OP-AAAA-NNNNNN`, para exibição ([ADR-006](../architecture/adr/ADR-006-numero-operacao-legivel.md)).
+As consultas são feitas pelo `numeroOperacao` (`/operacoes/OP-2026-0001`), que é como a esteira conhece a operação; o `id` também é aceito.
 
-As consultas aceitam qualquer um dos dois.
+### RN-03 — Calendário recebido e conferido
 
-### RN-03 — Cronograma mensal gerado internamente
-
-- Sistemas suportados: **PRICE** (parcela fixa) e **SAC** (amortização fixa, parcela decrescente).
-- `prazoMeses` deve ser igual a `quantidadeParcelas`.
-- `taxaJuros` é a taxa **mensal em decimal** (`0.0199` = 1,99% a.m.).
-- Vencimentos mensais a partir de `primeiroVencimento`, que deve ser posterior a `dataAprovacao`. Um vencimento no dia 31 cai no último dia dos meses mais curtos.
-- Valores arredondados para centavos a cada parcela. A última parcela absorve a diferença, para o saldo final ser exatamente zero.
-- Detalhes do cálculo em [ADR-004](../architecture/adr/ADR-004-cronograma-gerado-internamente.md).
+- O calendário vem pronto do juros, no sistema que o cliente escolheu (**PRICE** ou **SAC**), e é gravado **como veio**, sem recálculo.
+- Antes de gravar, as contas precisam fechar: uma parcela por mês de `prazoMeses`, numeradas em ordem, vencimentos crescentes depois da `dataLiberacao`, `valor = amortizacao + juros` e saldo encadeado até zero.
+- O `resumo` e os encargos também são conferidos (`totalPago`, `totalJuros`, `iof.total`, `encargos.total` e `valorLiberado`).
+- Detalhes em [ADR-009](../architecture/adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md).
 
 ### RN-04 — Operação e cronograma são gravados juntos
 
@@ -69,16 +65,20 @@ A operação e todas as parcelas são gravadas numa única transação. Nunca ex
 
 ### RN-05 — Estado inicial
 
-- Operação: status `ATIVA`, `saldoDevedor = valorAprovado`.
+- Operação: status `ATIVA`, `saldoDevedor = valorAprovado`. Os encargos são descontados na liberação e não entram no saldo.
 - Parcelas: status `PENDENTE`.
 
-### RN-06 — Precisão monetária
+### RN-06 — Precisão monetária e taxas
 
-Os valores usam decimal exato. `valorAprovado` aceita até 2 casas decimais e `taxaJuros` até 6. A entrada fora disso é recusada, e não arredondada ([ADR-005](../architecture/adr/ADR-005-valores-monetarios-decimal.md)).
+Os valores usam decimal exato e aceitam até 2 casas decimais; a entrada fora disso é recusada, e não arredondada ([ADR-005](../architecture/adr/ADR-005-valores-monetarios-decimal.md)). O juros envia taxas e CET em percentual, com até 4 casas; elas são guardadas e devolvidas em fração (`1.85` → `0.0185`).
 
-### RN-07 — Contexto do score
+### RN-07 — Reenvio não duplica
 
-O `contextoScore` é opcional, apenas armazenado e devolvido nas consultas. Não influencia nenhum cálculo.
+Um `POST /operacoes` com um `identificador` já registrado não grava nada e devolve `200`. A resposta do `POST`, nos dois casos, só confirma o registro (`id`, `numeroOperacao`, `status`, `criadoEm`).
+
+### RN-08 — Fuso horário
+
+Data/hora recebida sem fuso é interpretada como **GMT-03:00**. Com fuso explícito (ISO-8601), vale o fuso enviado. As respostas saem em UTC.
 
 A lista completa de validações e mensagens de erro está no [contrato da API](../architecture/contracts/README.md#erros).
 
@@ -94,6 +94,5 @@ A lista completa de validações e mensagens de erro está no [contrato da API](
 
 ## Pontos em aberto
 
-- **Idempotência do POST:** um reenvio cria uma operação duplicada. Possível solução: header de chave de idempotência, a combinar com a Decisão.
 - **Erros internos como `400`:** falhas de banco deveriam responder `500`.
 - **Renegociação:** depende de alinhamento com outro grupo.

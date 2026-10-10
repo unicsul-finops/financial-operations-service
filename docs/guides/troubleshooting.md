@@ -59,48 +59,60 @@ Encerre esse processo, ou suba a API em outra porta com `PORT=8084` no `.env`. L
 
 ### `relation "operacao" does not exist`
 
-As migrations não foram aplicadas nesse banco. Aplique a `0001` e depois a `0002`.
+A migration não foi aplicada nesse banco. Aplique a `0001_create_foundations.sql` (ver o [README](../../README.md#3-preparar-o-banco)).
 
-### `column "numero_operacao" does not exist`
+### `column "definido_em" does not exist` (ou outra coluna nova)
 
-Só a migration `0001` foi aplicada. Aplique a `0002_add_numero_operacao.sql`.
+O banco é de uma versão anterior à integração com o juros. As migrations recomeçaram do zero ([ADR-010](../architecture/adr/ADR-010-reinicio-das-migrations.md)), então recrie o banco e aplique a `0001` nova:
 
-### `relation "operacao_numero_seq" already exists` ao aplicar a `0002`
+```powershell
+psql -U postgres -c "DROP DATABASE finops;"
+psql -U postgres -c "CREATE DATABASE finops;"
+psql -U postgres -d finops -f migrations/0001_create_foundations.sql
+```
 
-A `0002` já tinha sido aplicada. Como ela roda dentro de uma transação, a segunda tentativa não altera nada. Nenhuma ação necessária.
+As operações de teste antigas são perdidas.
 
 ### `400 corpo da requisição inválido`
 
-O JSON está malformado ou algum campo veio com o tipo errado. Exemplos: número entre aspas em `quantidadeParcelas`, ou vírgula sobrando no final do objeto. Compare com [`examples/finops_operacao_create.json`](../../examples/finops_operacao_create.json).
+O JSON está malformado ou algum campo veio com o tipo errado. Exemplos: número entre aspas em `condicoes.prazoMeses`, ou vírgula sobrando no final do objeto. Compare com o exemplo `price` do `POST /operacoes` no Swagger (`http://localhost:8083/swagger`) ou com o corpo do "Criar operação (PRICE)" da coleção em [`collections/`](../../collections).
 
-### `400 taxaJuros deve ser a taxa mensal em decimal...`
+### `400 calendario: parcela N ...`
 
-A taxa foi enviada em porcentagem. Envie `0.0199` para 1,99% ao mês, não `1.99`.
+O calendário enviado pelo juros não fecha: parcela fora de ordem, `valor` diferente de `amortizacao + juros`, ou `saldoDevedor` que não bate com o saldo anterior menos a amortização. A mensagem diz qual parcela e qual conta. O calendário é gravado como veio, então o ajuste precisa ser feito no serviço de juros. Ver [ADR-009](../architecture/adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md).
+
+### `400 taxa.taxaFinalMes deve ser o percentual mensal...`
+
+A taxa veio com 100 ou mais, o que indica erro de unidade. O juros envia percentual: `1.85` para 1,85% ao mês.
 
 ### `400 identificador da operação inválido...`
 
-O `:id` da URL não é um UUID nem um número de operação no formato `OP-AAAA-NNNNNN`. Confira se não há espaços ou caracteres a mais na URL.
+O identificador da URL não é um número de operação no formato `OP-AAAA-NNNN` nem um id interno (inteiro, ex.: `1`). Confira se não há espaços ou caracteres a mais na URL.
 
 ### `404 operação não encontrada`
 
 O formato do identificador está certo, mas a operação não existe **nesse banco**. Confira se a API está apontando para o banco em que a operação foi criada (`DATABASE_URL`).
 
-### Os valores saem sem o zero final (`298.5` em vez de `298.50`)
+### As taxas saem diferentes do que o juros enviou (`0.0185` em vez de `1.85`)
+
+É o esperado: o juros envia percentual e a API devolve toda taxa em fração. `0.0185` é 1,85%.
+
+### O `definidoEm` sai 3 horas depois do enviado
+
+Também é esperado. O juros envia sem fuso, o valor é interpretado como GMT-03:00 e a resposta sai em UTC: `2026-10-08 15:12:40` vira `2026-10-08T18:12:40Z`.
+
+### Os valores saem sem o zero final (`185` em vez de `185.00`)
 
 É o comportamento esperado: é o mesmo número. O JSON não preserva zeros à direita. Ver [ADR-005](../architecture/adr/ADR-005-valores-monetarios-decimal.md).
 
-### A última parcela tem valor diferente das outras
+## Integração com o juros
 
-Também é esperado. A última parcela absorve os centavos que sobram dos arredondamentos, para o saldo final ser exatamente zero. Ver [ADR-004](../architecture/adr/ADR-004-cronograma-gerado-internamente.md).
-
-## Integração com a Decisão
-
-### A Decisão não consegue enviar para este serviço
+### O juros não consegue enviar para este serviço
 
 1. Confirme que a API está no ar: `http://localhost:8083/health` deve responder `{"status":"ok"}`.
-2. Se estiverem em máquinas diferentes, a Decisão deve usar o **IP da máquina deste serviço**, por exemplo `http://192.168.0.30:8083`, e não `localhost`.
+2. Se estiverem em máquinas diferentes, o juros deve usar o **IP da máquina deste serviço**, por exemplo `http://192.168.0.30:8083`, e não `localhost`.
 3. Verifique se o firewall do Windows permite conexões de entrada na porta 8083.
 
-### Operação duplicada
+### O reenvio respondeu `200` em vez de `201`
 
-O serviço não é idempotente: cada `POST /operacoes` cria uma nova operação. Se a Decisão reenviou a requisição (por timeout, por exemplo), haverá duas. Ver [ADR-003](../architecture/adr/ADR-003-id-gerado-pelo-servico.md).
+É o esperado. O `operacao.identificador` já estava registrado, então nada foi gravado de novo e a resposta é a operação existente. Para criar outra operação, o identificador precisa ser outro.
