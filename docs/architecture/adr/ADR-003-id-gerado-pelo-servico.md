@@ -2,7 +2,9 @@
 
 ## Status
 
-Aceita
+Substituída por [ADR-011](ADR-011-id-sequencial.md)
+
+> **Atualização (2026-10-10):** o ID continua sendo gerado por este serviço, mas deixou de ser UUID: passou a ser um inteiro sequencial ([ADR-011](ADR-011-id-sequencial.md)). A falta de idempotência citada nas consequências foi resolvida pelo identificador do juros ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)).
 
 ## Data
 

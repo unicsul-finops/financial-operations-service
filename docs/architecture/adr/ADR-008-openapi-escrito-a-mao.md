@@ -4,6 +4,8 @@
 
 Aceita
 
+> **Atualização (2026-10-10):** a decisão continua valendo. Os exemplos de particularidades citados abaixo mudaram com a integração com o juros: o `id` é inteiro ([ADR-011](ADR-011-id-sequencial.md)), o `contextoScore` não existe mais e o `POST` responde só a confirmação do registro, sem as parcelas ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)).
+
 ## Data
 
 2026-09-24

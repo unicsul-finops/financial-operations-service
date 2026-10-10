@@ -2,7 +2,9 @@
 
 ## Status
 
-Aceita
+Substituída por [ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)
+
+> **Atualização (2026-10-10):** o `numeroOperacao` deixou de ser gerado por sequence: agora é o identificador enviado pelo serviço de juros (`OP-AAAA-NNNN`), obrigatório ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)). A busca pelos dois identificadores continua, com o número da operação como forma principal.
 
 ## Data
 

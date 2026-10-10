@@ -4,6 +4,8 @@
 
 Aceita
 
+> **Atualização (2026-10-10):** a divisão em camadas continua valendo. Com a integração com o juros ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)), o service não calcula mais o cronograma: ele valida o payload do juros (`validacao.go`) e confere o calendário recebido (`calendario.go`). O exemplo de payload aninhado citado abaixo agora é o do juros, não o da Decisão.
+
 ## Data
 
 2026-09-24

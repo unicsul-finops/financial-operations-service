@@ -2,7 +2,9 @@
 
 ## Status
 
-Aceita
+Substituída por [ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)
+
+> **Atualização (2026-10-10):** o cronograma deixou de ser calculado aqui. Ele vem pronto do serviço de juros e só é conferido ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)). O código descrito abaixo (`GerarCronograma`) foi removido.
 
 ## Data
 
