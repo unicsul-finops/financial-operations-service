@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"database/sql"
 	"errors"
 	"net/http"
 
@@ -11,45 +10,113 @@ import (
 	"github.com/unicsul-finops/financial-operations-service/internal/service"
 )
 
-// payload combinado com o grupo de decisão. é aninhado, diferente do domínio que é flat.
+// payload enviado pelo serviço de juros, com a simulação que o cliente escolheu. é aninhado, diferente do domínio que é flat.
+// o demonstrativo e os campos que não são gravados nem são declarados aqui, o bind ignora.
 type CriarOperacaoRequest struct {
-	ClienteID            string                      `json:"clienteId"`
-	TipoPessoa           string                      `json:"tipoPessoa"`
-	Decisao              string                      `json:"decisao"`
-	DataAprovacao        string                      `json:"dataAprovacao"`
-	CondicoesFinanceiras CondicoesFinanceirasRequest `json:"condicoesFinanceiras"`
-	ContextoScore        *ContextoScoreRequest       `json:"contextoScore"`
+	Operacao      OperacaoJurosRequest `json:"operacao"`
+	Cliente       ClienteRequest       `json:"cliente"`
+	Produto       ProdutoRequest       `json:"produto"`
+	Condicoes     CondicoesRequest     `json:"condicoes"`
+	Taxa          TaxaRequest          `json:"taxa"`
+	Sistema       string               `json:"sistema"`
+	Resumo        ResumoRequest        `json:"resumo"`
+	Encargos      EncargosRequest      `json:"encargos"`
+	ValorLiberado decimal.Decimal      `json:"valorLiberado"`
+	CET           CETRequest           `json:"cet"`
+	Calendario    []ParcelaRequest     `json:"calendario"`
 }
 
-type CondicoesFinanceirasRequest struct {
-	ValorAprovado      decimal.Decimal     `json:"valorAprovado"`
-	PrazoMeses         int                 `json:"prazoMeses"`
-	QuantidadeParcelas int                 `json:"quantidadeParcelas"`
-	TaxaJuros          decimal.NullDecimal `json:"taxaJuros"`
-	SistemaAmortizacao string              `json:"sistemaAmortizacao"`
-	PrimeiroVencimento string              `json:"primeiroVencimento"`
+type OperacaoJurosRequest struct {
+	Identificador string `json:"identificador"`
+	Estado        string `json:"estado"`
+	DefinidoEm    string `json:"definidoEm"`
 }
 
-type ContextoScoreRequest struct {
-	ScoreFinal           *int32              `json:"scoreFinal"`
-	FaixaRisco           string              `json:"faixaRisco"`
-	ProbabilidadeDefault decimal.NullDecimal `json:"probabilidadeDefault"`
-	Modelo               string              `json:"modelo"`
-	Motivo               string              `json:"motivo"`
+type ClienteRequest struct {
+	TipoPessoa string `json:"tipoPessoa"`
+	Documento  string `json:"documento"`
 }
 
+type ProdutoRequest struct {
+	Codigo        string `json:"codigo"`
+	Nome          string `json:"nome"`
+	ModalidadeBcb string `json:"modalidadeBcb"`
+}
+
+type CondicoesRequest struct {
+	Valor         decimal.Decimal `json:"valor"`
+	PrazoMeses    int             `json:"prazoMeses"`
+	DataLiberacao string          `json:"dataLiberacao"`
+}
+
+type TaxaRequest struct {
+	FaixaRisco   string              `json:"faixaRisco"`
+	TaxaFinalMes decimal.NullDecimal `json:"taxaFinalMes"`
+	TaxaFinalAno decimal.NullDecimal `json:"taxaFinalAno"`
+	TetoAplicado bool                `json:"tetoAplicado"`
+}
+
+type ResumoRequest struct {
+	TotalJuros decimal.Decimal `json:"totalJuros"`
+	TotalPago  decimal.Decimal `json:"totalPago"`
+}
+
+type EncargosRequest struct {
+	IOF            IOFRequest      `json:"iof"`
+	TarifaCadastro decimal.Decimal `json:"tarifaCadastro"`
+	Total          decimal.Decimal `json:"total"`
+}
+
+type IOFRequest struct {
+	Diario    decimal.Decimal `json:"diario"`
+	Adicional decimal.Decimal `json:"adicional"`
+	Total     decimal.Decimal `json:"total"`
+}
+
+type CETRequest struct {
+	AnualPercentual  decimal.NullDecimal `json:"anualPercentual"`
+	MensalPercentual decimal.NullDecimal `json:"mensalPercentual"`
+}
+
+type ParcelaRequest struct {
+	Numero       int             `json:"numero"`
+	Amortizacao  decimal.Decimal `json:"amortizacao"`
+	Juros        decimal.Decimal `json:"juros"`
+	Valor        decimal.Decimal `json:"valor"`
+	SaldoDevedor decimal.Decimal `json:"saldoDevedor"`
+	Vencimento   string          `json:"vencimento"`
+}
+
+// resposta do POST. o juros acabou de mandar todos os dados, então só confirma o registro e diz como consultar.
+type OperacaoCriadaResponse struct {
+	ID             int64  `json:"id"`
+	NumeroOperacao string `json:"numeroOperacao"`
+	Status         string `json:"status"`
+	CriadoEm       string `json:"criadoEm"`
+}
+
+// todas as taxas da resposta saem em fração (0.0185 = 1,85%).
 type OperacaoResponse struct {
-	ID                   string                       `json:"id"`
+	ID                   int64                        `json:"id"`
 	NumeroOperacao       string                       `json:"numeroOperacao"`
 	ClienteID            string                       `json:"clienteId"`
 	TipoPessoa           string                       `json:"tipoPessoa"`
 	Status               string                       `json:"status"`
-	DataAprovacao        string                       `json:"dataAprovacao"`
+	DefinidoEm           string                       `json:"definidoEm"`
+	DataLiberacao        string                       `json:"dataLiberacao"`
 	SaldoDevedor         decimal.Decimal              `json:"saldoDevedor"`
+	Produto              ProdutoResponse              `json:"produto"`
 	CondicoesFinanceiras CondicoesFinanceirasResponse `json:"condicoesFinanceiras"`
-	ContextoScore        *ContextoScoreResponse       `json:"contextoScore,omitempty"`
+	Encargos             EncargosResponse             `json:"encargos"`
+	ValorLiberado        decimal.Decimal              `json:"valorLiberado"`
+	CET                  CETResponse                  `json:"cet"`
 	CriadoEm             string                       `json:"criadoEm"`
-	Parcelas             []ParcelaResponse            `json:"parcelas,omitempty"`
+}
+
+type ProdutoResponse struct {
+	Codigo        string `json:"codigo"`
+	Nome          string `json:"nome"`
+	ModalidadeBcb string `json:"modalidadeBcb"`
 }
 
 type CondicoesFinanceirasResponse struct {
@@ -57,16 +124,28 @@ type CondicoesFinanceirasResponse struct {
 	PrazoMeses         int             `json:"prazoMeses"`
 	QuantidadeParcelas int             `json:"quantidadeParcelas"`
 	TaxaJuros          decimal.Decimal `json:"taxaJuros"`
+	TaxaJurosAnual     decimal.Decimal `json:"taxaJurosAnual"`
+	FaixaRisco         string          `json:"faixaRisco"`
+	TetoAplicado       bool            `json:"tetoAplicado"`
 	SistemaAmortizacao string          `json:"sistemaAmortizacao"`
 	PrimeiroVencimento string          `json:"primeiroVencimento"`
 }
 
-type ContextoScoreResponse struct {
-	ScoreFinal           *int32           `json:"scoreFinal,omitempty"`
-	FaixaRisco           string           `json:"faixaRisco,omitempty"`
-	ProbabilidadeDefault *decimal.Decimal `json:"probabilidadeDefault,omitempty"`
-	Modelo               string           `json:"modelo,omitempty"`
-	Motivo               string           `json:"motivo,omitempty"`
+type EncargosResponse struct {
+	IOF            IOFResponse     `json:"iof"`
+	TarifaCadastro decimal.Decimal `json:"tarifaCadastro"`
+	Total          decimal.Decimal `json:"total"`
+}
+
+type IOFResponse struct {
+	Diario    decimal.Decimal `json:"diario"`
+	Adicional decimal.Decimal `json:"adicional"`
+	Total     decimal.Decimal `json:"total"`
+}
+
+type CETResponse struct {
+	Mensal decimal.Decimal `json:"mensal"`
+	Anual  decimal.Decimal `json:"anual"`
 }
 
 type ParcelaResponse struct {
@@ -87,7 +166,8 @@ func NovoOperacaoHandler(service *service.OperacaoService) *OperacaoHandler {
 	return &OperacaoHandler{service: service}
 }
 
-// POST /operacoes - recebe a operação aprovada pela decisão e gera o cronograma.
+// POST /operacoes - recebe a operação definida no serviço de juros, com o calendário pronto.
+// 201 quando cria, 200 quando o identificador já existia (reenvio). os dados completos ficam nos GETs.
 func (h *OperacaoHandler) Criar(c *gin.Context) {
 	var body CriarOperacaoRequest
 
@@ -96,15 +176,25 @@ func (h *OperacaoHandler) Criar(c *gin.Context) {
 		return
 	}
 
-	operacao, parcelas, err := h.service.CriarOperacao(paraNovaOperacao(body))
+	operacao, criada, err := h.service.CriarOperacao(paraNovaOperacao(body))
 	if err != nil {
 		responderErro(c, err)
 		return
 	}
 
-	resposta := paraOperacaoResponse(operacao)
-	resposta.Parcelas = paraParcelasResponse(parcelas)
+	resposta := OperacaoCriadaResponse{
+		ID:             operacao.ID,
+		NumeroOperacao: operacao.NumeroOperacao,
+		Status:         operacao.Status,
+		CriadoEm:       operacao.CriadoEm,
+	}
 
+	if !criada {
+		c.JSON(http.StatusOK, resposta)
+		return
+	}
+
+	c.Header("Location", "/operacoes/"+operacao.NumeroOperacao)
 	c.JSON(http.StatusCreated, resposta)
 }
 
@@ -124,9 +214,9 @@ func (h *OperacaoHandler) Listar(c *gin.Context) {
 	c.JSON(http.StatusOK, resposta)
 }
 
-// GET /operacoes/:id - situação atual da operação. o :id aceita o uuid ou o numeroOperacao.
+// GET /operacoes/:identificador - situação atual da operação. aceita o numeroOperacao (o normal) ou o id.
 func (h *OperacaoHandler) Buscar(c *gin.Context) {
-	operacao, err := h.service.BuscarOperacao(c.Param("id"))
+	operacao, err := h.service.BuscarOperacao(c.Param("identificador"))
 	if err != nil {
 		responderErro(c, err)
 		return
@@ -135,9 +225,9 @@ func (h *OperacaoHandler) Buscar(c *gin.Context) {
 	c.JSON(http.StatusOK, paraOperacaoResponse(operacao))
 }
 
-// GET /operacoes/:id/parcelas - cronograma com a situação de cada parcela. o :id aceita o uuid ou o numeroOperacao.
+// GET /operacoes/:identificador/parcelas - cronograma com a situação de cada parcela. aceita o numeroOperacao (o normal) ou o id.
 func (h *OperacaoHandler) ListarParcelas(c *gin.Context) {
-	parcelas, err := h.service.ListarParcelas(c.Param("id"))
+	parcelas, err := h.service.ListarParcelas(c.Param("identificador"))
 	if err != nil {
 		responderErro(c, err)
 		return
@@ -157,29 +247,44 @@ func responderErro(c *gin.Context, err error) {
 
 func paraNovaOperacao(body CriarOperacaoRequest) domain.NovaOperacao {
 	nova := domain.NovaOperacao{
-		ClienteID:          body.ClienteID,
-		TipoPessoa:         body.TipoPessoa,
-		Decisao:            body.Decisao,
-		DataAprovacao:      body.DataAprovacao,
-		ValorAprovado:      body.CondicoesFinanceiras.ValorAprovado,
-		PrazoMeses:         body.CondicoesFinanceiras.PrazoMeses,
-		QuantidadeParcelas: body.CondicoesFinanceiras.QuantidadeParcelas,
-		TaxaJuros:          body.CondicoesFinanceiras.TaxaJuros,
-		SistemaAmortizacao: body.CondicoesFinanceiras.SistemaAmortizacao,
-		PrimeiroVencimento: body.CondicoesFinanceiras.PrimeiroVencimento,
+		Identificador:        body.Operacao.Identificador,
+		Estado:               body.Operacao.Estado,
+		DefinidoEm:           body.Operacao.DefinidoEm,
+		ClienteID:            body.Cliente.Documento,
+		TipoPessoa:           body.Cliente.TipoPessoa,
+		ProdutoCodigo:        body.Produto.Codigo,
+		ProdutoNome:          body.Produto.Nome,
+		ModalidadeBcb:        body.Produto.ModalidadeBcb,
+		ValorAprovado:        body.Condicoes.Valor,
+		PrazoMeses:           body.Condicoes.PrazoMeses,
+		DataLiberacao:        body.Condicoes.DataLiberacao,
+		TaxaMensalPercentual: body.Taxa.TaxaFinalMes,
+		TaxaAnualPercentual:  body.Taxa.TaxaFinalAno,
+		FaixaRisco:           body.Taxa.FaixaRisco,
+		TetoAplicado:         body.Taxa.TetoAplicado,
+		SistemaAmortizacao:   body.Sistema,
+		TotalJuros:           body.Resumo.TotalJuros,
+		TotalPago:            body.Resumo.TotalPago,
+		IOFDiario:            body.Encargos.IOF.Diario,
+		IOFAdicional:         body.Encargos.IOF.Adicional,
+		IOFTotal:             body.Encargos.IOF.Total,
+		TarifaCadastro:       body.Encargos.TarifaCadastro,
+		EncargosTotal:        body.Encargos.Total,
+		ValorLiberado:        body.ValorLiberado,
+		CETMensalPercentual:  body.CET.MensalPercentual,
+		CETAnualPercentual:   body.CET.AnualPercentual,
+		Parcelas:             make([]domain.NovaParcela, 0, len(body.Calendario)),
 	}
 
-	if body.ContextoScore != nil {
-		contexto := body.ContextoScore
-		nova.ContextoScore = domain.ContextoScore{
-			FaixaRisco:           sql.NullString{String: contexto.FaixaRisco},
-			ProbabilidadeDefault: contexto.ProbabilidadeDefault,
-			Modelo:               sql.NullString{String: contexto.Modelo},
-			Motivo:               sql.NullString{String: contexto.Motivo},
-		}
-		if contexto.ScoreFinal != nil {
-			nova.ContextoScore.ScoreFinal = sql.NullInt32{Int32: *contexto.ScoreFinal, Valid: true}
-		}
+	for _, parcela := range body.Calendario {
+		nova.Parcelas = append(nova.Parcelas, domain.NovaParcela{
+			Numero:       parcela.Numero,
+			Vencimento:   parcela.Vencimento,
+			ValorParcela: parcela.Valor,
+			Amortizacao:  parcela.Amortizacao,
+			Juros:        parcela.Juros,
+			SaldoDevedor: parcela.SaldoDevedor,
+		})
 	}
 
 	return nova
@@ -192,41 +297,41 @@ func paraOperacaoResponse(operacao domain.Operacao) OperacaoResponse {
 		ClienteID:      operacao.ClienteID,
 		TipoPessoa:     operacao.TipoPessoa,
 		Status:         operacao.Status,
-		DataAprovacao:  operacao.DataAprovacao,
+		DefinidoEm:     operacao.DefinidoEm,
+		DataLiberacao:  operacao.DataLiberacao,
 		SaldoDevedor:   operacao.SaldoDevedor,
+		Produto: ProdutoResponse{
+			Codigo:        operacao.ProdutoCodigo,
+			Nome:          operacao.ProdutoNome,
+			ModalidadeBcb: operacao.ModalidadeBcb,
+		},
 		CondicoesFinanceiras: CondicoesFinanceirasResponse{
 			ValorAprovado:      operacao.ValorAprovado,
 			PrazoMeses:         operacao.PrazoMeses,
 			QuantidadeParcelas: operacao.QuantidadeParcelas,
 			TaxaJuros:          operacao.TaxaJuros,
+			TaxaJurosAnual:     operacao.TaxaJurosAnual,
+			FaixaRisco:         operacao.FaixaRisco,
+			TetoAplicado:       operacao.TetoAplicado,
 			SistemaAmortizacao: operacao.SistemaAmortizacao,
 			PrimeiroVencimento: operacao.PrimeiroVencimento,
 		},
-		ContextoScore: paraContextoScoreResponse(operacao.ContextoScore),
-		CriadoEm:      operacao.CriadoEm,
+		Encargos: EncargosResponse{
+			IOF: IOFResponse{
+				Diario:    operacao.IOFDiario,
+				Adicional: operacao.IOFAdicional,
+				Total:     operacao.IOFTotal,
+			},
+			TarifaCadastro: operacao.TarifaCadastro,
+			Total:          operacao.EncargosTotal,
+		},
+		ValorLiberado: operacao.ValorLiberado,
+		CET: CETResponse{
+			Mensal: operacao.CETMensal,
+			Anual:  operacao.CETAnual,
+		},
+		CriadoEm: operacao.CriadoEm,
 	}
-}
-
-// devolve nil quando nada do score foi gravado, pra o campo sumir da resposta.
-func paraContextoScoreResponse(contexto domain.ContextoScore) *ContextoScoreResponse {
-	if !contexto.ScoreFinal.Valid && !contexto.FaixaRisco.Valid && !contexto.ProbabilidadeDefault.Valid &&
-		!contexto.Modelo.Valid && !contexto.Motivo.Valid {
-		return nil
-	}
-
-	resposta := &ContextoScoreResponse{
-		FaixaRisco: contexto.FaixaRisco.String,
-		Modelo:     contexto.Modelo.String,
-		Motivo:     contexto.Motivo.String,
-	}
-	if contexto.ScoreFinal.Valid {
-		resposta.ScoreFinal = &contexto.ScoreFinal.Int32
-	}
-	if contexto.ProbabilidadeDefault.Valid {
-		resposta.ProbabilidadeDefault = &contexto.ProbabilidadeDefault.Decimal
-	}
-
-	return resposta
 }
 
 func paraParcelasResponse(parcelas []domain.Parcela) []ParcelaResponse {

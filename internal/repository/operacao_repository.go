@@ -2,36 +2,49 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/unicsul-finops/financial-operations-service/internal/domain"
 )
 
 // colunas lidas da operação, repetidas em todo SELECT/RETURNING pra manter a mesma ordem do scan.
 const colunasOperacao = `
-	id::text,
+	id,
 	numero_operacao,
 	cliente_id,
 	tipo_pessoa,
 	status,
-	to_char(data_aprovacao, 'YYYY-MM-DD'),
+	to_char(definido_em AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+	to_char(data_liberacao, 'YYYY-MM-DD'),
+	produto_codigo,
+	produto_nome,
+	modalidade_bcb,
 	valor_aprovado,
 	prazo_meses,
 	quantidade_parcelas,
 	taxa_juros,
+	taxa_juros_anual,
+	faixa_risco,
+	teto_aplicado,
 	sistema_amortizacao,
 	to_char(primeiro_vencimento, 'YYYY-MM-DD'),
 	saldo_devedor,
-	score_final,
-	faixa_risco,
-	probabilidade_default,
-	modelo_score,
-	motivo_score,
+	iof_diario,
+	iof_adicional,
+	iof_total,
+	tarifa_cadastro,
+	encargos_total,
+	valor_liberado,
+	cet_mensal,
+	cet_anual,
 	to_char(criado_em AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
 `
 
 const colunasParcela = `
-	id::text,
-	operacao_id::text,
+	id,
+	operacao_id,
 	numero,
 	to_char(vencimento, 'YYYY-MM-DD'),
 	valor_parcela,
@@ -63,19 +76,29 @@ func scanOperacao(linha scanner) (domain.Operacao, error) {
 		&operacao.ClienteID,
 		&operacao.TipoPessoa,
 		&operacao.Status,
-		&operacao.DataAprovacao,
+		&operacao.DefinidoEm,
+		&operacao.DataLiberacao,
+		&operacao.ProdutoCodigo,
+		&operacao.ProdutoNome,
+		&operacao.ModalidadeBcb,
 		&operacao.ValorAprovado,
 		&operacao.PrazoMeses,
 		&operacao.QuantidadeParcelas,
 		&operacao.TaxaJuros,
+		&operacao.TaxaJurosAnual,
+		&operacao.FaixaRisco,
+		&operacao.TetoAplicado,
 		&operacao.SistemaAmortizacao,
 		&operacao.PrimeiroVencimento,
 		&operacao.SaldoDevedor,
-		&operacao.ContextoScore.ScoreFinal,
-		&operacao.ContextoScore.FaixaRisco,
-		&operacao.ContextoScore.ProbabilidadeDefault,
-		&operacao.ContextoScore.Modelo,
-		&operacao.ContextoScore.Motivo,
+		&operacao.IOFDiario,
+		&operacao.IOFAdicional,
+		&operacao.IOFTotal,
+		&operacao.TarifaCadastro,
+		&operacao.EncargosTotal,
+		&operacao.ValorLiberado,
+		&operacao.CETMensal,
+		&operacao.CETAnual,
 		&operacao.CriadoEm,
 	)
 
@@ -100,81 +123,114 @@ func scanParcela(linha scanner) (domain.Parcela, error) {
 	return parcela, err
 }
 
-// grava a operação e o cronograma inteiro juntos, ou nada. nunca pode existir operação sem parcelas.
-func (r *OperacaoRepository) CriarComParcelas(nova domain.NovaOperacao, novas []domain.NovaParcela) (domain.Operacao, []domain.Parcela, error) {
+// grava a operação e o calendário inteiro juntos, ou nada. nunca pode existir operação sem parcelas.
+func (r *OperacaoRepository) CriarComParcelas(nova domain.NovaOperacao) (domain.Operacao, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return domain.Operacao{}, nil, err
+		return domain.Operacao{}, err
 	}
 
 	defer tx.Rollback()
 
 	// o saldo devedor começa igual ao valor aprovado, ninguém pagou nada ainda.
-	// numero_operacao fica de fora porque vem do default da sequence.
 	row := tx.QueryRow(`
 		INSERT INTO operacao (
+			numero_operacao,
 			cliente_id,
 			tipo_pessoa,
 			status,
-			data_aprovacao,
+			definido_em,
+			data_liberacao,
+			produto_codigo,
+			produto_nome,
+			modalidade_bcb,
 			valor_aprovado,
 			prazo_meses,
 			quantidade_parcelas,
 			taxa_juros,
+			taxa_juros_anual,
+			faixa_risco,
+			teto_aplicado,
 			sistema_amortizacao,
 			primeiro_vencimento,
 			saldo_devedor,
-			score_final,
-			faixa_risco,
-			probabilidade_default,
-			modelo_score,
-			motivo_score
+			iof_diario,
+			iof_adicional,
+			iof_total,
+			tarifa_cadastro,
+			encargos_total,
+			valor_liberado,
+			cet_mensal,
+			cet_anual
 		)
 		VALUES (
 			$1,
 			$2,
 			$3,
-			$4::date,
+			$4,
 			$5,
-			$6,
+			$6::date,
 			$7,
 			$8,
 			$9,
-			$10::date,
-			$5,
+			$10,
 			$11,
 			$12,
 			$13,
 			$14,
-			$15
+			$15,
+			$16,
+			$17,
+			$18::date,
+			$10,
+			$19,
+			$20,
+			$21,
+			$22,
+			$23,
+			$24,
+			$25,
+			$26
 		)
 		RETURNING `+colunasOperacao,
+		nova.Identificador,
 		nova.ClienteID,
 		nova.TipoPessoa,
 		domain.StatusOperacaoAtiva,
-		nova.DataAprovacao,
+		nova.DefinidoEmUTC,
+		nova.DataLiberacao,
+		nova.ProdutoCodigo,
+		nova.ProdutoNome,
+		nova.ModalidadeBcb,
 		nova.ValorAprovado,
 		nova.PrazoMeses,
 		nova.QuantidadeParcelas,
 		nova.TaxaJuros,
+		nova.TaxaJurosAnual,
+		nova.FaixaRisco,
+		nova.TetoAplicado,
 		nova.SistemaAmortizacao,
 		nova.PrimeiroVencimento,
-		nova.ContextoScore.ScoreFinal,
-		nova.ContextoScore.FaixaRisco,
-		nova.ContextoScore.ProbabilidadeDefault,
-		nova.ContextoScore.Modelo,
-		nova.ContextoScore.Motivo,
+		nova.IOFDiario,
+		nova.IOFAdicional,
+		nova.IOFTotal,
+		nova.TarifaCadastro,
+		nova.EncargosTotal,
+		nova.ValorLiberado,
+		nova.CETMensal,
+		nova.CETAnual,
 	)
 
 	operacao, err := scanOperacao(row)
+	if numeroJaRegistrado(err) {
+		return domain.Operacao{}, domain.ErrOperacaoJaRegistrada
+	}
 	if err != nil {
-		return domain.Operacao{}, nil, err
+		return domain.Operacao{}, err
 	}
 
-	parcelas := make([]domain.Parcela, 0, len(novas))
-
-	for _, novaParcela := range novas {
-		row := tx.QueryRow(`
+	for _, novaParcela := range nova.Parcelas {
+		_, err := tx.Exec(`
 			INSERT INTO parcela (
 				operacao_id,
 				numero,
@@ -186,7 +242,7 @@ func (r *OperacaoRepository) CriarComParcelas(nova domain.NovaOperacao, novas []
 				status
 			)
 			VALUES (
-				$1::uuid,
+				$1,
 				$2,
 				$3::date,
 				$4,
@@ -194,8 +250,7 @@ func (r *OperacaoRepository) CriarComParcelas(nova domain.NovaOperacao, novas []
 				$6,
 				$7,
 				$8
-			)
-			RETURNING `+colunasParcela,
+			)`,
 			operacao.ID,
 			novaParcela.Numero,
 			novaParcela.Vencimento,
@@ -205,20 +260,16 @@ func (r *OperacaoRepository) CriarComParcelas(nova domain.NovaOperacao, novas []
 			novaParcela.SaldoDevedor,
 			domain.StatusParcelaPendente,
 		)
-
-		parcela, err := scanParcela(row)
 		if err != nil {
-			return domain.Operacao{}, nil, err
+			return domain.Operacao{}, err
 		}
-
-		parcelas = append(parcelas, parcela)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return domain.Operacao{}, nil, err
+		return domain.Operacao{}, err
 	}
 
-	return operacao, parcelas, nil
+	return operacao, nil
 }
 
 func (r *OperacaoRepository) Listar() ([]domain.Operacao, error) {
@@ -247,11 +298,11 @@ func (r *OperacaoRepository) Listar() ([]domain.Operacao, error) {
 	return operacoes, rows.Err()
 }
 
-func (r *OperacaoRepository) Buscar(id string) (domain.Operacao, error) {
+func (r *OperacaoRepository) Buscar(id int64) (domain.Operacao, error) {
 	row := r.db.QueryRow(`
 		SELECT `+colunasOperacao+`
 		FROM operacao
-		WHERE id = $1::uuid
+		WHERE id = $1
 	`, id)
 
 	return scanOperacaoEncontrada(row)
@@ -266,6 +317,12 @@ func (r *OperacaoRepository) BuscarPorNumero(numero string) (domain.Operacao, er
 	`, numero)
 
 	return scanOperacaoEncontrada(row)
+}
+
+// violação da UNIQUE do numero_operacao: o mesmo identificador foi gravado por outro envio ao mesmo tempo.
+func numeroJaRegistrado(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "operacao_numero_operacao_key"
 }
 
 // traduz o "nenhuma linha" do banco pro erro que o handler transforma em 404.
@@ -283,11 +340,11 @@ func scanOperacaoEncontrada(row *sql.Row) (domain.Operacao, error) {
 	return operacao, nil
 }
 
-func (r *OperacaoRepository) ListarParcelas(operacaoID string) ([]domain.Parcela, error) {
+func (r *OperacaoRepository) ListarParcelas(operacaoID int64) ([]domain.Parcela, error) {
 	rows, err := r.db.Query(`
 		SELECT `+colunasParcela+`
 		FROM parcela
-		WHERE operacao_id = $1::uuid
+		WHERE operacao_id = $1
 		ORDER BY numero
 	`, operacaoID)
 	if err != nil {

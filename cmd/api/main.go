@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	// por padrão o decimal vira string no json. número mantém o mesmo formato do payload da decisão.
+	// por padrão o decimal vira string no json. número mantém o mesmo formato do payload do juros.
 	decimal.MarshalJSONWithoutQuotes = true
 
 	cfg, err := config.Carregar()
@@ -56,8 +56,9 @@ func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 
 	router.POST("/operacoes", operacaoHandler.Criar)
 	router.GET("/operacoes", operacaoHandler.Listar)
-	router.GET("/operacoes/:id", operacaoHandler.Buscar)
-	router.GET("/operacoes/:id/parcelas", operacaoHandler.ListarParcelas)
+	// o caminho certo é pelo identificador do juros (numeroOperacao); o id interno também é aceito.
+	router.GET("/operacoes/:identificador", operacaoHandler.Buscar)
+	router.GET("/operacoes/:identificador/parcelas", operacaoHandler.ListarParcelas)
 
 	router.GET("/openapi.yaml", handler.OpenAPI)
 	router.GET("/swagger", func(c *gin.Context) {

@@ -11,8 +11,8 @@ const (
 )
 
 type Parcela struct {
-	ID           string
-	OperacaoID   string
+	ID           int64
+	OperacaoID   int64
 	Numero       int
 	Vencimento   string
 	ValorParcela decimal.Decimal
