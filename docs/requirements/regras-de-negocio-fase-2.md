@@ -14,8 +14,8 @@ Ninguém do grupo tem experiência no mercado de crédito, então cada regra foi
 | RN-10 | Atraso | Parcela vence no dia seguinte ao vencimento sem pagamento total. Dias em atraso = dias corridos. |
 | RN-11 | Situação calculada | `VENCIDA`, `EM_ATRASO` e `INADIMPLENTE` são calculados na consulta, não gravados. |
 | RN-12 | Inadimplência | Operação `INADIMPLENTE` quando alguma parcela passa de **90 dias** de atraso. |
-| RN-13 | Encargos por atraso | Multa de **2%** + juros de mora de **1% ao mês** pro rata die, sobre o valor em aberto da parcela. |
-| RN-14 | Pagamento | Paga as parcelas da mais antiga para a mais nova; dentro da parcela: encargos → juros → amortização. |
+| RN-13 | Encargos por atraso | Multa de **2%**, fixada no 1º dia de atraso, + juros de mora de **1% ao mês** pro rata die sobre o valor em aberto de cada dia. |
+| RN-14 | Pagamento | **Por parcela**: o cliente escolhe a parcela. Dentro dela: multa → mora → juros → amortização. |
 | RN-15 | Saldo devedor | É o principal ainda não pago (soma das amortizações em aberto). |
 | RN-16 | Valor presente | Desconto pela taxa do contrato, contado em períodos entre vencimentos, como o juros calcula. |
 | RN-17 | Amortização antecipada | Quita as **últimas N parcelas** pelo valor presente (reduz o prazo). |
@@ -71,20 +71,19 @@ Exemplo: a parcela 1 vence em 30/11/2026. Sem pagamento, a operação fica `EM_A
 
 ## RN-13: Encargos por atraso
 
-Sobre o **valor em aberto** da parcela vencida (valor da parcela menos o que já foi pago dela):
-
 | Encargo | Regra | Fonte |
 | --- | --- | --- |
-| **Multa** | **2%**, cobrada uma vez, a partir do primeiro dia de atraso | [CDC, art. 52, §1º](https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm): multa de mora não pode passar de 2% da prestação |
-| **Juros de mora** | **1% ao mês, simples, pro rata die**: 1% × dias em atraso ÷ 30 | [Súmula 379 do STJ](https://stj.jus.br/publicacaoinstitucional/index.php/sumstj/article/download/5552/5675): em contratos bancários, até 1% ao mês |
+| **Multa** | **2%** sobre o valor em aberto da parcela no **primeiro dia de atraso**. É fixada nesse dia e não muda depois. | [CDC, art. 52, §1º](https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm): multa de mora não pode passar de 2% da prestação |
+| **Juros de mora** | **1% ao mês, simples, pro rata die**: a cada dia de atraso, 1% ÷ 30 sobre o valor em aberto da parcela **naquele dia**. | [Súmula 379 do STJ](https://stj.jus.br/publicacaoinstitucional/index.php/sumstj/article/download/5552/5675): em contratos bancários, até 1% ao mês |
 
-- Os encargos **não** incidem uns sobre os outros (sem juros sobre multa) e não são capitalizados.
-- Os valores são calculados para a data de referência e arredondados para centavos (meio para cima).
-- Os encargos **pagos** ficam gravados no pagamento (RN-14 e RN-21). Os encargos **em aberto** são calculados na consulta.
+- **Valor em aberto da parcela** = juros + amortização da parcela que ainda não foram pagos. Encargos não entram nessa base: não há juros sobre multa nem capitalização.
+- Com pagamento parcial, a base da mora diminui a partir da data do pagamento. A mora acumulada é a soma de cada trecho: base do trecho × 1% × dias do trecho ÷ 30.
+- **Encargos em aberto** numa data = multa + mora acumulada até a data − encargos já pagos. Arredondamento para centavos (meio para cima) só no resultado, não em cada dia.
+- Nada disso é gravado: os encargos são calculados a partir dos pagamentos já feitos (RN-14) e da data de referência. O que fica gravado é **quanto de cada encargo foi pago** em cada pagamento.
 
 **O que a norma permite e ficou de fora:** a [Resolução CMN 4.882/2020](https://normativos.bcb.gov.br/) permite cobrar, no atraso, **só** três coisas: juros remuneratórios do contrato por dia de atraso, multa e juros de mora. Proposta: **não cobrar os juros remuneratórios do atraso** nesta fase. Fica mais simples de calcular e de explicar, e é mais favorável ao cliente. Pode entrar depois sem mudar o resto.
 
-Exemplo: a parcela 1 (936,91), paga em 10/12/2026 com 10 dias de atraso:
+Exemplo: a parcela 1 (936,91), paga por inteiro em 10/12/2026, com 10 dias de atraso:
 
 | Item | Cálculo | Valor |
 | --- | --- | --- |
@@ -93,39 +92,48 @@ Exemplo: a parcela 1 (936,91), paga em 10/12/2026 com 10 dias de atraso:
 | Juros de mora | 936,91 × 1% × 10/30 | 3,12 |
 | **Total devido** | | **958,77** |
 
-## RN-14: Pagamento
+## RN-14: Pagamento de parcela
 
-`POST /operacoes/{identificador}/pagamentos` com `valor`, `dataPagamento` e, opcionalmente, `identificadorPagamento`.
+`POST /operacoes/{identificador}/parcelas/{numero}/pagamentos` com `valor`, `dataPagamento` e, opcionais, `identificadorPagamento` e `origem`.
 
-- **`identificadorPagamento` (opcional):** quem registra o pagamento pode mandar um identificador próprio. Se um pagamento com o mesmo identificador já existir, nada é gravado de novo e a resposta é `200` com o pagamento já registrado, a mesma lógica de reenvio da operação. Sem o campo, o pagamento é sempre registrado. Ver a pergunta 1 em [O que confirmar com o serviço de juros](#o-que-confirmar-com-o-serviço-de-juros).
+O pagamento é **por parcela**: quem paga escolhe qual parcela está pagando, como num boleto ou num desconto em folha. O [Código Civil, art. 352](https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm) dá ao devedor o direito de indicar qual dívida está pagando.
+
+- **`identificadorPagamento` (opcional):** identificador do pagamento para quem chama, por exemplo o app do cliente. Se já existir um pagamento com o mesmo identificador na operação, nada é gravado de novo e a resposta é `200` com o pagamento já registrado. Protege contra clique duplo e reenvio por rede instável. Sem o campo, o pagamento é sempre registrado.
+- **`origem` (opcional, texto livre):** quem pagou ou por onde (`CLIENTE`, `INSS`, `BOLETO`…). Só é registrada no histórico. Assim, um chamador novo não exige mudar o contrato.
 
 **Validações:**
 
 - `valor` maior que zero, com até 2 casas decimais.
-- A operação não pode estar `LIQUIDADA`.
-- O `valor` não pode passar do que é devido **até a próxima parcela a vencer**: as vencidas com encargos, mais a próxima. Para pagar mais que isso, o caminho é a amortização antecipada (RN-17), que dá desconto. Pagamento normal não dá desconto.
+- A operação não pode estar `LIQUIDADA`, e a parcela não pode estar `PAGA`.
+- **Parcelas que aceitam pagamento:** as vencidas e a **próxima a vencer**. Pagar uma parcela mais distante é antecipação, e o caminho é a amortização (RN-17), que dá desconto.
+- O `valor` não pode passar do que está em aberto na parcela na `dataPagamento`: valor em aberto + encargos em aberto (RN-13). Pagamento de parcela não dá desconto.
 
-**Ordem de abatimento (imputação):**
-
-1. **Entre parcelas:** da mais antiga para a mais nova. O [Código Civil, art. 355](https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm) manda imputar primeiro nas dívidas vencidas.
-2. **Dentro de cada parcela:** encargos (multa e mora) → juros → amortização. O [Código Civil, art. 354](https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm) manda abater primeiro os juros vencidos e depois o capital.
+**Ordem de abatimento dentro da parcela:** multa → juros de mora → juros → amortização. O [Código Civil, art. 354](https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm) manda abater primeiro os juros vencidos e depois o capital.
 
 **Resultado:**
 
 - Parcela paga por inteiro → `PAGA`. Paga em parte → `PARCIALMENTE_PAGA`.
 - O saldo devedor da operação cai pela parte que foi para a **amortização** (RN-15).
+- A resposta mostra quanto foi para cada componente, o que ainda falta na parcela e o saldo devedor depois do pagamento.
 - Tudo numa transação só, com evento no histórico (RN-21).
 
-Exemplo: pagamento **parcial de 500,00** na parcela 1, em 10/12/2026 (10 dias de atraso):
+Quem tem várias parcelas em atraso faz um pagamento para cada. Se isso incomodar, um "pagar tudo o que está vencido" pode entrar depois, sem mudar este contrato.
+
+Exemplo: a parcela 1 (936,91, vencida em 30/11/2026) paga em duas vezes.
+
+**Em 10/12/2026, pagamento parcial de 500,00** (10 dias de atraso):
 
 | Destino | Valor |
 | --- | --- |
-| Encargos (18,74 + 3,12) | 21,86 |
+| Multa | 18,74 |
+| Juros de mora (936,91 × 1% × 10/30) | 3,12 |
 | Juros da parcela | 185,00 |
 | Amortização | 293,14 |
 | **Total** | **500,00** |
 
-A parcela fica `PARCIALMENTE_PAGA` e o saldo devedor cai de 10.000,00 para **9.706,86**.
+A parcela fica `PARCIALMENTE_PAGA`, com **458,77** em aberto, e o saldo devedor cai de 10.000,00 para **9.706,86**.
+
+**Em 20/12/2026, quitação da parcela:** a mora dos 10 dias seguintes corre só sobre os 458,77. A mora acumulada vai a 4,65 (3,12 + 1,53), e os encargos em aberto são 18,74 + 4,65 − 21,86 pagos = **1,53**. Para quitar: 458,77 + 1,53 = **460,30**, divididos em 1,53 de mora e 458,77 de amortização. A parcela fica `PAGA`.
 
 ## RN-15: Saldo devedor
 
@@ -160,7 +168,7 @@ VP = valor da parcela / (1 + i) ^ (k − f)
 - Quita as **últimas N parcelas** do calendário, cada uma pelo seu valor presente (RN-16). O cliente **reduz o prazo**, e as parcelas que sobram continuam com o mesmo valor e o mesmo vencimento.
 - **Só sem atraso:** se houver parcela vencida, o pedido é recusado (`400`) e o atraso precisa ser pago antes. Isso evita misturar desconto com encargos.
 - Não pode quitar todas as parcelas. Para isso existe a liquidação (RN-18).
-- As parcelas quitadas ficam `PAGA`. O saldo devedor cai pelo valor presente pago.
+- As parcelas quitadas ficam `PAGA`. O saldo devedor cai pelo valor presente pago, que conta inteiro como amortização; a diferença para o valor da parcela é registrada como **desconto**.
 - **Repartição das parcelas restantes:** com o saldo menor, a divisão entre juros e amortização das parcelas que sobram muda. Ela é recalculada pela taxa do contrato (`juros = saldo × i`; `amortização = valor − juros`), mantendo valor e vencimento. A última parcela absorve os centavos, como no cálculo do juros.
 - Um `GET /operacoes/{identificador}/amortizacoes/simulacao?quantidadeParcelas=N&dataReferencia=…` devolve o valor antes de o cliente decidir.
 
@@ -183,7 +191,9 @@ O saldo devedor cai de 8.482,27 para **6.907,90**. As parcelas 3 a 10 continuam 
 
 **Valor para quitar** = parcelas vencidas em aberto **com encargos** (sem desconto) + parcelas a vencer pelo **valor presente** (RN-16). Sem tarifa ([Res. CMN 3.516/2007](https://normativos.bcb.gov.br/Lists/Normativos/Attachments/48006/Res_3516_v3_P.pdf)).
 
-**Resultado:** todas as parcelas `PAGA`, saldo devedor `0,00`, operação **`LIQUIDADA`**, evento no histórico. Uma operação `LIQUIDADA` não aceita mais pagamento, amortização nem liquidação.
+**Resultado:** todas as parcelas `PAGA`, saldo devedor `0,00`, operação **`LIQUIDADA`**, evento no histórico.
+
+**Como fica registrado:** as parcelas vencidas entram como pagamentos de parcela comuns (com encargos). As parcelas a vencer entram juntas, num lançamento só da operação: a amortização é o saldo devedor que restava, os juros são a diferença entre o valor presente e esse saldo (os juros pro rata do período em curso) e o desconto é a diferença entre a soma nominal e o valor presente. Uma operação `LIQUIDADA` não aceita mais pagamento, amortização nem liquidação.
 
 Exemplos com as parcelas 1 e 2 pagas em dia:
 
@@ -227,13 +237,24 @@ Tabela **só de inclusão**: evento gravado não é alterado nem apagado.
 | `AMORTIZACAO_ANTECIPADA` | Amortização (RN-17), com as parcelas quitadas, os valores presentes e o desconto. |
 | `LIQUIDACAO` | Liquidação antecipada (RN-18) ou encerramento automático (RN-19). |
 
-Cada evento grava: tipo, data do efeito (`dataPagamento`), momento do registro, valor e um detalhe em JSON com a distribuição.
+Cada evento grava: tipo, data do efeito (`dataPagamento`), momento do registro, valor, o `identificadorPagamento` e a `origem` (quando vierem) e um detalhe em JSON. A distribuição do dinheiro (quanto foi para multa, mora, juros, amortização e desconto, em cada parcela) fica nos lançamentos do evento. Ver [Modelo de dados](#modelo-de-dados).
 
 Atraso e inadimplência **não** viram eventos gravados, porque a situação é calculada (RN-11). Na consulta do histórico, eles aparecem como entradas **calculadas**: "parcela 1 vencida em 01/12/2026", "operação inadimplente em 01/03/2027". Cada entrada indica `origem: CALCULADO` para não ser confundida com um evento gravado.
 
 `GET /operacoes/{identificador}/historico?dataReferencia=…`, em ordem cronológica.
 
 ---
+
+## Modelo de dados
+
+A migration [`0002_fase_2_pagamentos_e_eventos.sql`](../../migrations/0002_fase_2_pagamentos_e_eventos.sql) cria duas tabelas. Todo o resto (encargos em aberto, atraso, valor presente, resumo) é calculado a partir delas, das parcelas e da data de referência.
+
+| Tabela | O que guarda |
+| --- | --- |
+| `evento` | Uma linha por fato da operação: registro, pagamento, amortização ou liquidação. É o histórico (RN-21) e o cabeçalho de cada movimentação de dinheiro. O `identificador_externo` (o `identificadorPagamento`) é único por operação. |
+| `lancamento` | A distribuição do dinheiro de cada evento: uma linha por parcela atingida, com multa, juros de mora, juros, amortização e desconto. Na liquidação, as parcelas a vencer entram numa linha sem parcela (RN-18). |
+
+Conferências garantidas pelo banco: valores nunca negativos, e `valor` do lançamento = multa + juros de mora + juros + amortização.
 
 ## Fora do escopo desta fase
 
@@ -248,7 +269,7 @@ Atraso e inadimplência **não** viram eventos gravados, porque a situação é 
 
 ## O que confirmar com o serviço de juros
 
-1. **Algum sistema vai nos avisar dos pagamentos das parcelas, ou o pagamento é registrado manualmente pela nossa API?** Sabemos como a operação chega (o juros manda o `POST /operacoes`), mas não quem informa que uma parcela foi paga. Se for um sistema automático, ele pode reenviar por timeout, e o `identificadorPagamento` (RN-14) passa a ser obrigatório para não pagar duas vezes. Se for manual (Swagger ou coleção), ele continua opcional. As regras não mudam em nenhum dos casos.
+1. ~~Quem chama os pagamentos?~~ **Respondida:** o cliente, por exemplo pelo app. O contrato fica genérico (RN-14) para aceitar outros chamadores sem mudar, e o `identificadorPagamento` continua opcional.
 2. **Recalcular a repartição na amortização (RN-17)** é aceitável para eles? Os valores e vencimentos das parcelas que sobram não mudam; só a divisão entre juros e amortização.
 3. **Convenção de períodos (RN-16):** confirmar que eles cobram a taxa cheia por período, independentemente dos dias. O exemplo enviado indica que sim.
 
