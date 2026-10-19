@@ -913,6 +913,320 @@
           }
         }
       ]
+    },
+    {
+      "name": "Contrato #6 — data de referência e atraso",
+      "description": "Cenários previstos para a implementação após aprovação do contrato. Use as operações PRICE criadas acima, sem movimentações financeiras. Estes testes novos falham no código da Fase 1.",
+      "item": [
+        {
+          "name": "Operação em 2026-11-30",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001?dataReferencia=2026-11-30",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.equal(\"ATIVA\");",
+                  "  pm.expect(body.saldoDevedor).to.equal(10000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Parcelas em 2026-11-30",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-11-30",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.lengthOf(12);",
+                  "  pm.expect(body[0].status).to.equal(\"PENDENTE\");",
+                  "  pm.expect(body[0].diasEmAtraso).to.equal(0);",
+                  "  pm.expect(body[0].valorEmAberto).to.equal(936.91);",
+                  "  pm.expect(body[1].status).to.equal(\"PENDENTE\");",
+                  "  pm.expect(body[1].diasEmAtraso).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Operação em 2026-12-10",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001?dataReferencia=2026-12-10",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.equal(\"EM_ATRASO\");",
+                  "  pm.expect(body.saldoDevedor).to.equal(10000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Parcelas em 2026-12-10",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-10",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.lengthOf(12);",
+                  "  pm.expect(body[0].status).to.equal(\"VENCIDA\");",
+                  "  pm.expect(body[0].diasEmAtraso).to.equal(10);",
+                  "  pm.expect(body[0].valorEmAberto).to.equal(936.91);",
+                  "  pm.expect(body[1].status).to.equal(\"PENDENTE\");",
+                  "  pm.expect(body[1].diasEmAtraso).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data inválida '10-12-2026' — operacoes/OP-2026-0001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001?dataReferencia=10-12-2026",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data inválida '2026-02-30' — operacoes/OP-2026-0001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001?dataReferencia=2026-02-30",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data inválida '' — operacoes/OP-2026-0001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001?dataReferencia=",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data omitida — operacoes/OP-2026-0001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001",
+            "description": "Deve coincidir com a consulta explícita de hoje em GMT-03:00."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property(\"status\");",
+                  "});",
+                  "const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);",
+                  "pm.sendRequest(pm.variables.replaceIn(\"{{baseUrl}}/operacoes/OP-2026-0001?dataReferencia=\" + hoje), function (err, response) {",
+                  "  pm.test(\"padrão é hoje em GMT-03:00\", function () { pm.expect(err).to.equal(null); pm.expect(response.code).to.equal(200); pm.expect(response.json()).to.deep.equal(pm.response.json()); });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data inválida '10-12-2026' — operacoes/OP-2026-0001/parcelas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=10-12-2026",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data inválida '2026-02-30' — operacoes/OP-2026-0001/parcelas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-02-30",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data inválida '' — operacoes/OP-2026-0001/parcelas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Data omitida — operacoes/OP-2026-0001/parcelas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas",
+            "description": "Deve coincidir com a consulta explícita de hoje em GMT-03:00."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status esperado\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"contrato da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an(\"array\");",
+                  "});",
+                  "const hoje = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);",
+                  "pm.sendRequest(pm.variables.replaceIn(\"{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=\" + hoje), function (err, response) {",
+                  "  pm.test(\"padrão é hoje em GMT-03:00\", function () { pm.expect(err).to.equal(null); pm.expect(response.code).to.equal(200); pm.expect(response.json()).to.deep.equal(pm.response.json()); });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
