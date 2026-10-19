@@ -244,10 +244,15 @@ paths:
     get:
       tags: [Operações]
       summary: Consulta a situação de uma operação
-      description: Por enquanto o `status` é sempre `ATIVA` e o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
+      description: |
+        RN-09, RN-10 e RN-11: calcula o status na data de referência, sem gravar atraso.
+        Uma operação ATIVA com ao menos uma parcela vencida sai como EM_ATRASO.
+        LIQUIDADA permanece LIQUIDADA. O corte de inadimplência será tratado na história #8.
+        A data não pode ser anterior à última movimentação financeira da operação.
       operationId: buscarOperacao
       parameters:
         - $ref: "#/components/parameters/IdentificadorOperacao"
+        - $ref: "#/components/parameters/DataReferencia"
       responses:
         "200":
           description: Operação encontrada.
@@ -258,8 +263,10 @@ paths:
               examples:
                 price:
                   $ref: "#/components/examples/OperacaoPrice"
+                emAtraso:
+                  $ref: "#/components/examples/OperacaoPriceEmAtraso"
         "400":
-          $ref: "#/components/responses/IdentificadorInvalido"
+          $ref: "#/components/responses/ConsultaInvalida"
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
@@ -267,10 +274,15 @@ paths:
     get:
       tags: [Operações]
       summary: Consulta o cronograma de parcelas
-      description: Parcelas ordenadas por `numero`.
+      description: |
+        RN-09, RN-10 e RN-11: parcelas ordenadas por numero, com situação calculada na data de referência.
+        Só há atraso depois do vencimento, em dias corridos, se a parcela não estiver paga por inteiro.
+        VENCIDA prevalece sobre PENDENTE e PARCIALMENTE_PAGA na resposta; PAGA permanece PAGA.
+        O cálculo não altera os estados gravados. A data não pode anteceder a última movimentação financeira.
       operationId: listarParcelas
       parameters:
         - $ref: "#/components/parameters/IdentificadorOperacao"
+        - $ref: "#/components/parameters/DataReferencia"
       responses:
         "200":
           description: Cronograma da operação.
@@ -280,13 +292,58 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Parcela"
+              examples:
+                noVencimento:
+                  summary: Calendário sem pagamentos em 2026-11-30
+                  value:
+                    - {"numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 2, "vencimento": "2026-12-30", "valorParcela": 936.91, "amortizacao": 765.82, "juros": 171.09, "saldoDevedor": 8482.27, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 3, "vencimento": "2027-02-01", "valorParcela": 936.91, "amortizacao": 779.99, "juros": 156.92, "saldoDevedor": 7702.28, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 4, "vencimento": "2027-03-01", "valorParcela": 936.91, "amortizacao": 794.42, "juros": 142.49, "saldoDevedor": 6907.86, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 5, "vencimento": "2027-03-30", "valorParcela": 936.91, "amortizacao": 809.11, "juros": 127.8, "saldoDevedor": 6098.75, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 6, "vencimento": "2027-04-30", "valorParcela": 936.91, "amortizacao": 824.08, "juros": 112.83, "saldoDevedor": 5274.67, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 7, "vencimento": "2027-05-31", "valorParcela": 936.91, "amortizacao": 839.33, "juros": 97.58, "saldoDevedor": 4435.34, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 8, "vencimento": "2027-06-30", "valorParcela": 936.91, "amortizacao": 854.86, "juros": 82.05, "saldoDevedor": 3580.48, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 9, "vencimento": "2027-07-30", "valorParcela": 936.91, "amortizacao": 870.67, "juros": 66.24, "saldoDevedor": 2709.81, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 10, "vencimento": "2027-08-30", "valorParcela": 936.91, "amortizacao": 886.78, "juros": 50.13, "saldoDevedor": 1823.03, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PENDENTE", "valorEmAberto": 936.87, "diasEmAtraso": 0}
+                dezDiasEmAtraso:
+                  summary: Calendário sem pagamentos em 2026-12-10
+                  value:
+                    - {"numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "VENCIDA", "valorEmAberto": 936.91, "diasEmAtraso": 10}
+                    - {"numero": 2, "vencimento": "2026-12-30", "valorParcela": 936.91, "amortizacao": 765.82, "juros": 171.09, "saldoDevedor": 8482.27, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 3, "vencimento": "2027-02-01", "valorParcela": 936.91, "amortizacao": 779.99, "juros": 156.92, "saldoDevedor": 7702.28, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 4, "vencimento": "2027-03-01", "valorParcela": 936.91, "amortizacao": 794.42, "juros": 142.49, "saldoDevedor": 6907.86, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 5, "vencimento": "2027-03-30", "valorParcela": 936.91, "amortizacao": 809.11, "juros": 127.8, "saldoDevedor": 6098.75, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 6, "vencimento": "2027-04-30", "valorParcela": 936.91, "amortizacao": 824.08, "juros": 112.83, "saldoDevedor": 5274.67, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 7, "vencimento": "2027-05-31", "valorParcela": 936.91, "amortizacao": 839.33, "juros": 97.58, "saldoDevedor": 4435.34, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 8, "vencimento": "2027-06-30", "valorParcela": 936.91, "amortizacao": 854.86, "juros": 82.05, "saldoDevedor": 3580.48, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 9, "vencimento": "2027-07-30", "valorParcela": 936.91, "amortizacao": 870.67, "juros": 66.24, "saldoDevedor": 2709.81, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 10, "vencimento": "2027-08-30", "valorParcela": 936.91, "amortizacao": 886.78, "juros": 50.13, "saldoDevedor": 1823.03, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0}
+                    - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PENDENTE", "valorEmAberto": 936.87, "diasEmAtraso": 0}
         "400":
-          $ref: "#/components/responses/IdentificadorInvalido"
+          $ref: "#/components/responses/ConsultaInvalida"
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
 components:
   parameters:
+    DataReferencia:
+      name: dataReferencia
+      in: query
+      required: false
+      description: |
+        RN-09: dia em GMT-03:00, no formato YYYY-MM-DD. Omitido, vale hoje nesse fuso.
+        Vazio ou data inexistente é inválido. Datas futuras são aceitas para simulação.
+        Não pode ser anterior à data do último pagamento, amortização ou liquidação registrado;
+        a mesma data é aceita. Não se trata de uma reconstrução histórica.
+      schema:
+        type: string
+        format: date
+        pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      example: "2026-12-10"
     IdentificadorOperacao:
       name: identificador
       in: path
@@ -343,7 +400,61 @@ components:
           anual: 0.3089
         criadoEm: "2026-10-08T18:13:02Z"
 
+    OperacaoPriceEmAtraso:
+      summary: Operação PRICE sem pagamentos em 2026-12-10
+      value:
+        id: 1
+        numeroOperacao: OP-2026-0001
+        clienteId: "52998224725"
+        tipoPessoa: PF
+        status: EM_ATRASO
+        definidoEm: "2026-10-08T18:12:40Z"
+        dataLiberacao: "2026-10-30"
+        saldoDevedor: 10000
+        produto:
+          codigo: CONSIGNADO_INSS
+          nome: Crédito pessoal consignado INSS
+          modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+        condicoesFinanceiras:
+          valorAprovado: 10000
+          prazoMeses: 12
+          quantidadeParcelas: 12
+          taxaJuros: 0.0185
+          taxaJurosAnual: 0.246
+          faixaRisco: B
+          tetoAplicado: true
+          sistemaAmortizacao: PRICE
+          primeiroVencimento: "2026-11-30"
+        encargos:
+          iof:
+            diario: 167.65
+            adicional: 38
+            total: 205.65
+          tarifaCadastro: 50
+          total: 255.65
+        valorLiberado: 9744.35
+        cet:
+          mensal: 0.0227
+          anual: 0.3089
+        criadoEm: "2026-10-08T18:13:02Z"
+
   responses:
+    ConsultaInvalida:
+      description: Identificador inválido, data inválida ou anterior à última movimentação financeira (RN-09).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          examples:
+            identificadorInvalido:
+              value:
+                erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+            dataReferenciaInvalida:
+              value:
+                erro: dataReferencia deve estar no formato YYYY-MM-DD
+            dataReferenciaAnterior:
+              value:
+                erro: dataReferencia não pode ser anterior à data da última movimentação financeira da operação
     IdentificadorInvalido:
       description: O identificador não é um id nem um número de operação.
       content:
@@ -732,7 +843,7 @@ components:
 
     Parcela:
       type: object
-      required: [numero, vencimento, valorParcela, amortizacao, juros, saldoDevedor, status]
+      required: [numero, vencimento, valorParcela, amortizacao, juros, saldoDevedor, status, valorEmAberto, diasEmAtraso]
       properties:
         numero:
           type: integer
@@ -758,15 +869,25 @@ components:
           type: number
           description: Saldo após a parcela. É `0` na última.
           example: 9248.09
+        valorEmAberto:
+          type: number
+          minimum: 0
+          description: Juros + amortização menos juros pagos, amortização paga e desconto concedido (RN-13). Sem multa nem mora. PAGA sempre tem zero. Valor em reais, até duas casas decimais.
+          example: 936.91
+        diasEmAtraso:
+          type: integer
+          minimum: 0
+          description: Dias corridos entre vencimento e dataReferencia quando vencida (RN-10). Zero no vencimento, antes dele ou se PAGA.
+          example: 10
         status:
           $ref: "#/components/schemas/StatusParcela"
 
     StatusOperacao:
       type: string
       enum: [ATIVA, EM_ATRASO, INADIMPLENTE, RENEGOCIADA, LIQUIDADA]
-      description: Por enquanto toda operação é `ATIVA`. Os demais status são previstos para as próximas fases.
+      description: ATIVA com parcela vencida é exibida como EM_ATRASO (RN-11), sem persistir o atraso. LIQUIDADA permanece LIQUIDADA. INADIMPLENTE será tratado na história #8 e RENEGOCIADA em fase futura.
 
     StatusParcela:
       type: string
       enum: [PENDENTE, PAGA, PARCIALMENTE_PAGA, VENCIDA]
-      description: Por enquanto toda parcela é `PENDENTE`. Os demais status são previstos para as próximas fases.
+      description: VENCIDA quando não paga por inteiro e dataReferencia posterior ao vencimento (RN-10 e RN-11), prevalecendo sobre PENDENTE e PARCIALMENTE_PAGA na resposta. PAGA permanece PAGA. O estado calculado não é gravado.
