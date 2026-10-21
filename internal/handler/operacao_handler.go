@@ -149,13 +149,15 @@ type CETResponse struct {
 }
 
 type ParcelaResponse struct {
-	Numero       int             `json:"numero"`
-	Vencimento   string          `json:"vencimento"`
-	ValorParcela decimal.Decimal `json:"valorParcela"`
-	Amortizacao  decimal.Decimal `json:"amortizacao"`
-	Juros        decimal.Decimal `json:"juros"`
-	SaldoDevedor decimal.Decimal `json:"saldoDevedor"`
-	Status       string          `json:"status"`
+	Numero        int             `json:"numero"`
+	Vencimento    string          `json:"vencimento"`
+	ValorParcela  decimal.Decimal `json:"valorParcela"`
+	Amortizacao   decimal.Decimal `json:"amortizacao"`
+	Juros         decimal.Decimal `json:"juros"`
+	SaldoDevedor  decimal.Decimal `json:"saldoDevedor"`
+	Status        string          `json:"status"`
+	ValorEmAberto decimal.Decimal `json:"valorEmAberto"`
+	DiasEmAtraso  int             `json:"diasEmAtraso"`
 }
 
 type OperacaoHandler struct {
@@ -216,7 +218,7 @@ func (h *OperacaoHandler) Listar(c *gin.Context) {
 
 // GET /operacoes/:identificador - situação atual da operação. aceita o numeroOperacao (o normal) ou o id.
 func (h *OperacaoHandler) Buscar(c *gin.Context) {
-	operacao, err := h.service.BuscarOperacao(c.Param("identificador"))
+	operacao, err := h.service.BuscarOperacao(c.Param("identificador"), dataReferenciaQuery(c))
 	if err != nil {
 		responderErro(c, err)
 		return
@@ -227,13 +229,23 @@ func (h *OperacaoHandler) Buscar(c *gin.Context) {
 
 // GET /operacoes/:identificador/parcelas - cronograma com a situação de cada parcela. aceita o numeroOperacao (o normal) ou o id.
 func (h *OperacaoHandler) ListarParcelas(c *gin.Context) {
-	parcelas, err := h.service.ListarParcelas(c.Param("identificador"))
+	parcelas, err := h.service.ListarParcelas(c.Param("identificador"), dataReferenciaQuery(c))
 	if err != nil {
 		responderErro(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, paraParcelasResponse(parcelas))
+}
+
+// ponteiro distingue parâmetro omitido de parâmetro enviado vazio.
+func dataReferenciaQuery(c *gin.Context) *string {
+	valores, presente := c.Request.URL.Query()["dataReferencia"]
+	if !presente {
+		return nil
+	}
+	valor := valores[0]
+	return &valor
 }
 
 func responderErro(c *gin.Context, err error) {
@@ -339,13 +351,15 @@ func paraParcelasResponse(parcelas []domain.Parcela) []ParcelaResponse {
 
 	for _, parcela := range parcelas {
 		resposta = append(resposta, ParcelaResponse{
-			Numero:       parcela.Numero,
-			Vencimento:   parcela.Vencimento,
-			ValorParcela: parcela.ValorParcela,
-			Amortizacao:  parcela.Amortizacao,
-			Juros:        parcela.Juros,
-			SaldoDevedor: parcela.SaldoDevedor,
-			Status:       parcela.Status,
+			Numero:        parcela.Numero,
+			Vencimento:    parcela.Vencimento,
+			ValorParcela:  parcela.ValorParcela,
+			Amortizacao:   parcela.Amortizacao,
+			Juros:         parcela.Juros,
+			SaldoDevedor:  parcela.SaldoDevedor,
+			Status:        parcela.Status,
+			ValorEmAberto: parcela.ValorEmAberto,
+			DiasEmAtraso:  parcela.DiasEmAtraso,
 		})
 	}
 

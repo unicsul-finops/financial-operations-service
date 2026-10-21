@@ -38,6 +38,7 @@ PostgreSQL (finops)
 - Confere se o calendário fecha ao centavo e grava como veio, sem recalcular.
 - Usa o identificador do juros como `numeroOperacao` (`OP-2026-0001`), o mesmo em toda a esteira. Reenviar a mesma operação não duplica.
 - Consulta a situação da operação e o cronograma **pelo identificador do juros** (`/operacoes/OP-2026-0001`); o id interno também é aceito.
+- Nas consultas individuais de operação e parcelas, aceita `?dataReferencia=YYYY-MM-DD` (padrão: hoje em GMT-03:00). Mostra `valorEmAberto`, `diasEmAtraso` e os status `VENCIDA`/`EM_ATRASO` calculados, sem gravar o atraso. Uma referência anterior à última movimentação financeira é recusada.
 
 O roadmap completo, com as fases seguintes, está em [Requisitos](docs/requirements/README.md).
 
@@ -95,7 +96,7 @@ Para criar um endpoint novo: a rota em `novoRouter`, o handler, o caso de uso no
 
 Verifique se a máquina possui:
 
-- **Go 1.26** ou superior;
+- **Go 1.26.5** ou superior (conforme `go.mod`);
 - **PostgreSQL** instalado e rodando localmente (testado com a versão 18);
 - **Git**.
 
@@ -278,6 +279,10 @@ O contrato completo, com todas as regras de validação, respostas e mensagens d
 ```powershell
 go test ./...
 ```
+
+Para validar a tarefa #6 contra PostgreSQL, defina `FINOPS_TEST_DATABASE_URL` com uma conexão de teste e execute `go test ./cmd/api -run TestAtrasoIntegracao -v`. O teste cria um schema temporário exclusivo, aplica as migrations e o remove ao terminar; não altera as operações existentes. O usuário precisa de permissão para criar schemas. Sem essa variável, somente esse teste é pulado; os testes unitários continuam sem banco. Não publique a URL com senha.
+
+Depois de iniciar a API, consulte `http://localhost:8083/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-10`. Sem pagamentos no exemplo PRICE, a primeira parcela deve retornar `VENCIDA`, `diasEmAtraso: 10` e `valorEmAberto: 936.91`. Em `2026-11-30`, ela permanece `PENDENTE`, com zero dias. Os pedidos da pasta `Contrato #6` na coleção exercitam esses cenários; a operação deve estar sem movimentações para reproduzir os valores do exemplo.
 
 Os testes ficam ao lado do código (`internal/service/*_test.go` e `cmd/api/main_test.go`) e cobrem a conferência do calendário recebido (ordem, vencimentos, soma das parcelas e saldo encadeado até zero, ao centavo), a conversão das taxas, a interpretação do fuso e todas as validações de entrada. Eles também validam o `openapi.yaml` (inclusive os exemplos contra os schemas), conferem se toda rota do router está documentada nele e se os erros de rota e de método saem em JSON. Nenhum teste precisa de banco.
 
