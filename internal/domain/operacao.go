@@ -6,7 +6,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// os demais status ja existem no banco, mas so passam a ser usados nas proximas fases.
+// em atraso é calculado na consulta; inadimplência e renegociação pertencem a outras histórias.
 const (
 	StatusOperacaoAtiva        = "ATIVA"
 	StatusOperacaoEmAtraso     = "EM_ATRASO"

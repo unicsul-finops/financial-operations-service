@@ -224,7 +224,7 @@ Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validaçõe
 
 | Status | Situação |
 | --- | --- |
-| `ATIVA` | Operação registrada e em dia. Único status usado por enquanto. |
+| `ATIVA` | Operação registrada, sem parcelas vencidas na data de referência. |
 | `EM_ATRASO` | Fase 2 ([#8](https://github.com/unicsul-finops/financial-operations-service/issues/8)): há parcela vencida sem pagamento. Calculado na consulta ([RN-11](../../requirements/regras-de-negocio-fase-2.md#rn-11-situação-calculada-na-consulta)). |
 | `INADIMPLENTE` | Fase 2 ([#8](https://github.com/unicsul-finops/financial-operations-service/issues/8)): alguma parcela com mais de 90 dias de atraso. Calculado na consulta ([RN-12](../../requirements/regras-de-negocio-fase-2.md#rn-12-inadimplência)). |
 | `RENEGOCIADA` | Previsto: novas condições negociadas. Depende de outro grupo. |

@@ -11,15 +11,20 @@ const (
 )
 
 type Parcela struct {
-	ID           int64
-	OperacaoID   int64
-	Numero       int
-	Vencimento   string
-	ValorParcela decimal.Decimal
-	Amortizacao  decimal.Decimal
-	Juros        decimal.Decimal
-	SaldoDevedor decimal.Decimal
-	Status       string
+	ID                int64
+	OperacaoID        int64
+	Numero            int
+	Vencimento        string
+	ValorParcela      decimal.Decimal
+	Amortizacao       decimal.Decimal
+	Juros             decimal.Decimal
+	SaldoDevedor      decimal.Decimal
+	Status            string
+	JurosPagos        decimal.Decimal
+	AmortizacaoPaga   decimal.Decimal
+	DescontoConcedido decimal.Decimal
+	ValorEmAberto     decimal.Decimal
+	DiasEmAtraso      int
 }
 
 type NovaParcela struct {

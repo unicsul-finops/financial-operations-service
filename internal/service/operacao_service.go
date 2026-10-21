@@ -5,20 +5,28 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/unicsul-finops/financial-operations-service/internal/domain"
-	"github.com/unicsul-finops/financial-operations-service/internal/repository"
 )
 
 // formato do identificador do serviço de juros. 4 dígitos ou mais, pra numeração poder crescer.
 var formatoNumeroOperacao = regexp.MustCompile(`^OP-\d{4}-\d{4,}$`)
 
-type OperacaoService struct {
-	repo *repository.OperacaoRepository
+type RepositorioOperacoes interface {
+	BuscarPorNumero(string) (domain.Operacao, error)
+	CriarComParcelas(domain.NovaOperacao) (domain.Operacao, error)
+	Listar() ([]domain.Operacao, error)
+	ConsultarSituacao(int64, string) (domain.Operacao, []domain.Parcela, string, error)
 }
 
-func NovoOperacaoService(repo *repository.OperacaoRepository) *OperacaoService {
-	return &OperacaoService{repo: repo}
+type OperacaoService struct {
+	repo  RepositorioOperacoes
+	agora func() time.Time
+}
+
+func NovoOperacaoService(repo RepositorioOperacoes) *OperacaoService {
+	return &OperacaoService{repo: repo, agora: time.Now}
 }
 
 // devolve true quando a operação foi criada agora e false quando o identificador já existia (reenvio do juros).
@@ -54,28 +62,45 @@ func (s *OperacaoService) ListarOperacoes() ([]domain.Operacao, error) {
 	return s.repo.Listar()
 }
 
-// aceita o numeroOperacao, que é como a esteira conhece a operação, ou o id interno.
-func (s *OperacaoService) BuscarOperacao(identificador string) (domain.Operacao, error) {
-	id, numero, err := identificarOperacao(identificador)
-	if err != nil {
-		return domain.Operacao{}, err
-	}
-
-	if numero != "" {
-		return s.repo.BuscarPorNumero(numero)
-	}
-
-	return s.repo.Buscar(id)
+// operação e parcelas usam a mesma regra e o mesmo retrato dos dados financeiros.
+func (s *OperacaoService) BuscarOperacao(identificador string, referencia *string) (domain.Operacao, error) {
+	operacao, _, err := s.consultarSituacao(identificador, referencia)
+	return operacao, err
 }
 
-func (s *OperacaoService) ListarParcelas(identificador string) ([]domain.Parcela, error) {
-	// além de achar o id quando vier o número, garante 404 pra operação inexistente em vez de lista vazia.
-	operacao, err := s.BuscarOperacao(identificador)
-	if err != nil {
-		return nil, err
-	}
+func (s *OperacaoService) ListarParcelas(identificador string, referencia *string) ([]domain.Parcela, error) {
+	_, parcelas, err := s.consultarSituacao(identificador, referencia)
+	return parcelas, err
+}
 
-	return s.repo.ListarParcelas(operacao.ID)
+func (s *OperacaoService) consultarSituacao(identificador string, referencia *string) (domain.Operacao, []domain.Parcela, error) {
+	id, numero, err := identificarOperacao(identificador)
+	if err != nil {
+		return domain.Operacao{}, nil, err
+	}
+	data, err := interpretarDataReferencia(referencia, s.agora())
+	if err != nil {
+		return domain.Operacao{}, nil, err
+	}
+	operacao, parcelas, ultimaData, err := s.repo.ConsultarSituacao(id, numero)
+	if err != nil {
+		return domain.Operacao{}, nil, err
+	}
+	if ultimaData != "" && data.Format(time.DateOnly) < ultimaData {
+		return domain.Operacao{}, nil, errors.New("dataReferencia não pode ser anterior à data da última movimentação financeira da operação")
+	}
+	calculadas := make([]domain.Parcela, 0, len(parcelas))
+	for _, parcela := range parcelas {
+		calculada, err := calcularSituacaoParcela(parcela, data)
+		if err != nil {
+			return domain.Operacao{}, nil, err
+		}
+		calculadas = append(calculadas, calculada)
+		if operacao.Status == domain.StatusOperacaoAtiva && calculada.Status == domain.StatusParcelaVencida {
+			operacao.Status = domain.StatusOperacaoEmAtraso
+		}
+	}
+	return operacao, calculadas, nil
 }
 
 // descobre pelo formato se veio o id ou o numeroOperacao. quando é o número, devolve ele e o id fica zero.
