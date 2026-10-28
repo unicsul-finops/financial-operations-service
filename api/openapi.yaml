@@ -352,7 +352,18 @@ paths:
     get:
       tags: [Operações]
       summary: Consulta o cronograma de parcelas
-      description: Parcelas ordenadas por `numero`.
+      description: |
+        RN-09, RN-10, RN-11 e RN-13: parcelas ordenadas por numero, com situação calculada na data de referência.
+        Só há atraso depois do vencimento, em dias corridos, se a parcela não estiver paga por inteiro.
+        VENCIDA prevalece sobre PENDENTE e PARCIALMENTE_PAGA na resposta; PAGA permanece PAGA.
+        RN-13: multa de 2% da base do primeiro dia de atraso, fixada nesse dia; mora simples
+        de 1% ao mês pro rata die (divisor 30) sobre a base de cada trecho, reduzida na data do pagamento.
+        Não há juros sobre multa nem capitalização. Arredondar multa e mora acumuladas ao centavo,
+        meio para cima, somente no resultado, sem arredondar cada dia ou trecho; subtrair os respectivos encargos pagos.
+        encargos.total soma os componentes em aberto; totalParaQuitar é valorEmAberto + encargos.total.
+        Sem atraso ou PAGA: encargos zero. PAGA também tem totalParaQuitar zero, inclusive com desconto.
+        Os encargos são calculados a partir dos lançamentos e não são gravados.
+        O cálculo não altera os estados gravados. A data não pode anteceder a última movimentação financeira.
       operationId: listarParcelas
       parameters:
         - $ref: "#/components/parameters/IdentificadorOperacao"
@@ -1287,7 +1298,7 @@ components:
 
     Parcela:
       type: object
-      required: [numero, vencimento, valorParcela, amortizacao, juros, saldoDevedor, status]
+      required: [numero, vencimento, valorParcela, amortizacao, juros, saldoDevedor, status, valorEmAberto, diasEmAtraso, encargos, totalParaQuitar]
       properties:
         numero:
           type: integer
@@ -1313,8 +1324,26 @@ components:
           type: number
           description: Saldo após a parcela. É `0` na última.
           example: 9248.09
+        valorEmAberto:
+          type: number
+          minimum: 0
+          description: Juros + amortização menos juros pagos, amortização paga e desconto concedido (RN-13). Sem multa nem mora. PAGA sempre tem zero. Valor em reais, até duas casas decimais.
+          example: 936.91
+        diasEmAtraso:
+          type: integer
+          minimum: 0
+          description: Dias corridos entre vencimento e dataReferencia quando vencida (RN-10). Zero no vencimento, antes dele ou se PAGA.
+          example: 10
+        encargos:
+          $ref: "#/components/schemas/EncargosParcela"
+        totalParaQuitar:
+          type: number
+          minimum: 0
+          description: Valor em aberto + encargos.total na dataReferencia (RN-13), em reais, até duas casas. Zero para PAGA. Não é a liquidação antecipada da operação (RN-18).
+          example: 958.77
         status:
           $ref: "#/components/schemas/StatusParcela"
+
 
     ParcelaAmortizada:
       type: object
@@ -1498,6 +1527,27 @@ components:
           minimum: 1
           description: Parcelas que continuam em aberto. A tabela recalculada sai em `GET /operacoes/{identificador}/parcelas`.
           example: 8
+
+    EncargosParcela:
+      type: object
+      description: Encargos por atraso em aberto na dataReferencia (RN-13), em reais, até duas casas. Todos os campos sempre presentes, inclusive zerados.
+      required: [multa, jurosMora, total]
+      properties:
+        multa:
+          type: number
+          minimum: 0
+          description: Multa de 2% da base do primeiro dia de atraso, fixada e arredondada ao centavo, menos multa paga. Zero sem atraso ou para PAGA.
+          example: 18.74
+        jurosMora:
+          type: number
+          minimum: 0
+          description: Mora simples acumulada (1% x base x dias / 30 por trecho), arredondada somente ao final, menos mora paga. Zero sem atraso ou para PAGA.
+          example: 3.12
+        total:
+          type: number
+          minimum: 0
+          description: Soma de multa e jurosMora em aberto após os pagamentos de cada componente.
+          example: 21.86
 
     StatusOperacao:
       type: string
