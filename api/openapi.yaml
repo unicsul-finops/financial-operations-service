@@ -15,6 +15,7 @@ info:
     - O juros manda as taxas em **percentual** (`1.85` = 1,85%). Nas respostas, **todas as taxas saem em fração** (`0.0185`).
     - Data/hora sem fuso no payload é interpretada como **GMT-03:00**. Nas respostas, data/hora sai em UTC.
     - Valores monetários são calculados com decimal exato. No JSON saem como número, e zeros à direita não são preservados (`185.00` sai como `185`).
+    - A situação de atraso (`EM_ATRASO`, `INADIMPLENTE`) e o `diasEmAtraso` são **calculados na consulta**, para a `dataReferencia` (padrão: hoje, GMT-03:00), e nunca gravados. Operação `LIQUIDADA` continua `LIQUIDADA` em qualquer data.
     - Todos os erros têm o formato `{"erro": "mensagem"}`, inclusive rota inexistente (`404`) e método não permitido (`405`).
 
 servers:
@@ -24,7 +25,7 @@ servers:
 
 tags:
   - name: Operações
-    description: Registro e consulta de operações definidas no serviço de juros.
+    description: Registro, consulta e situação (atraso e inadimplência) das operações definidas no serviço de juros.
   - name: Saúde
     description: Verificação de disponibilidade.
 
@@ -226,36 +227,96 @@ paths:
     get:
       tags: [Operações]
       summary: Lista as operações
-      description: Da mais recente para a mais antiga, sem as parcelas. Sem operações cadastradas, devolve `[]`.
+      description: |
+        Da mais recente para a mais antiga, sem as parcelas. Sem operações cadastradas, devolve `[]`.
+
+        O `status` e o `diasEmAtraso` de cada operação são calculados para a `dataReferencia`, com as mesmas regras do `GET /operacoes/{identificador}` (RN-11 e RN-12).
       operationId: listarOperacoes
+      parameters:
+        - $ref: "#/components/parameters/DataReferencia"
       responses:
         "200":
-          description: Lista de operações.
+          description: Lista de operações, com a situação calculada para a `dataReferencia`.
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Operacao"
+              examples:
+                emAtraso:
+                  summary: Uma operação com a parcela 1 vencida há 1 dia (dataReferencia 2026-12-01)
+                  value:
+                      - id: 1
+                        numeroOperacao: OP-2026-0001
+                        clienteId: "52998224725"
+                        tipoPessoa: PF
+                        status: EM_ATRASO
+                        diasEmAtraso: 1
+                        definidoEm: "2026-10-08T18:12:40Z"
+                        dataLiberacao: "2026-10-30"
+                        saldoDevedor: 10000
+                        produto:
+                          codigo: CONSIGNADO_INSS
+                          nome: Crédito pessoal consignado INSS
+                          modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+                        condicoesFinanceiras:
+                          valorAprovado: 10000
+                          prazoMeses: 12
+                          quantidadeParcelas: 12
+                          taxaJuros: 0.0185
+                          taxaJurosAnual: 0.246
+                          faixaRisco: B
+                          tetoAplicado: true
+                          sistemaAmortizacao: PRICE
+                          primeiroVencimento: "2026-11-30"
+                        encargos:
+                          iof:
+                            diario: 167.65
+                            adicional: 38
+                            total: 205.65
+                          tarifaCadastro: 50
+                          total: 255.65
+                        valorLiberado: 9744.35
+                        cet:
+                          mensal: 0.0227
+                          anual: 0.3089
+                        criadoEm: "2026-10-08T18:13:02Z"
         "400":
-          $ref: "#/components/responses/ErroInterno"
+          description: |
+            `dataReferencia` fora do formato `YYYY-MM-DD`. Falhas inesperadas, como erro de banco, também são devolvidas como `400` por enquanto (ver `ErroInterno`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                dataReferenciaInvalida:
+                  summary: dataReferencia fora do formato
+                  value:
+                    erro: dataReferencia deve estar no formato YYYY-MM-DD
 
   /operacoes/{identificador}:
     get:
       tags: [Operações]
       summary: Consulta a situação de uma operação
       description: |
-        RN-09, RN-10 e RN-11: calcula o status na data de referência, sem gravar atraso.
-        Uma operação ATIVA com ao menos uma parcela vencida sai como EM_ATRASO.
-        LIQUIDADA permanece LIQUIDADA. O corte de inadimplência será tratado na história #8.
-        A data não pode ser anterior à última movimentação financeira da operação.
+        O `status` e o `diasEmAtraso` são calculados na consulta, para a `dataReferencia` (padrão: hoje, GMT-03:00), e nunca gravados (RN-11 e RN-12):
+
+        - `EM_ATRASO`: alguma parcela vencida em aberto, com 1 a 90 dias de atraso;
+        - `INADIMPLENTE`: alguma parcela com mais de 90 dias de atraso;
+        - `ATIVA`: nenhuma parcela vencida em aberto;
+        - `LIQUIDADA` continua `LIQUIDADA` em qualquer data de referência.
+
+        O `diasEmAtraso` é o maior atraso, em dias corridos, entre as parcelas em aberto (`0` sem atraso). Pagar as parcelas vencidas faz a operação voltar a `EM_ATRASO` ou `ATIVA` sozinha, sem nenhuma ação extra.
+
+        Por enquanto o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
       operationId: buscarOperacao
       parameters:
         - $ref: "#/components/parameters/IdentificadorOperacao"
         - $ref: "#/components/parameters/DataReferencia"
       responses:
         "200":
-          description: Operação encontrada.
+          description: Operação encontrada, com a situação calculada para a `dataReferencia`.
           content:
             application/json:
               schema:
@@ -264,9 +325,26 @@ paths:
                 price:
                   $ref: "#/components/examples/OperacaoPrice"
                 emAtraso:
-                  $ref: "#/components/examples/OperacaoPriceEmAtraso"
+                  $ref: "#/components/examples/OperacaoEmAtraso"
+                inadimplente:
+                  $ref: "#/components/examples/OperacaoInadimplente"
+                liquidada:
+                  $ref: "#/components/examples/OperacaoLiquidada"
         "400":
-          $ref: "#/components/responses/ConsultaInvalida"
+          description: O identificador não é um id nem um número de operação, ou a `dataReferencia` está fora do formato `YYYY-MM-DD`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                identificadorInvalido:
+                  summary: Identificador que não é id nem numeroOperacao
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                dataReferenciaInvalida:
+                  summary: dataReferencia fora do formato
+                  value:
+                    erro: dataReferencia deve estar no formato YYYY-MM-DD
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
@@ -289,7 +367,6 @@ paths:
       operationId: listarParcelas
       parameters:
         - $ref: "#/components/parameters/IdentificadorOperacao"
-        - $ref: "#/components/parameters/DataReferencia"
       responses:
         "200":
           description: Cronograma da operação.
@@ -362,26 +439,12 @@ paths:
                     - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
                     - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
         "400":
-          $ref: "#/components/responses/ConsultaInvalida"
+          $ref: "#/components/responses/IdentificadorInvalido"
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
 components:
   parameters:
-    DataReferencia:
-      name: dataReferencia
-      in: query
-      required: false
-      description: |
-        RN-09: dia em GMT-03:00, no formato YYYY-MM-DD. Omitido, vale hoje nesse fuso.
-        Vazio ou data inexistente é inválido. Datas futuras são aceitas para simulação.
-        Não pode ser anterior à data do último pagamento, amortização ou liquidação registrado;
-        a mesma data é aceita. Não se trata de uma reconstrução histórica.
-      schema:
-        type: string
-        format: date
-        pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-      example: "2026-12-10"
     IdentificadorOperacao:
       name: identificador
       in: path
@@ -399,15 +462,27 @@ components:
           summary: Pelo id interno
           value: "1"
 
+    DataReferencia:
+      name: dataReferencia
+      in: query
+      required: false
+      description: |
+        Dia (`YYYY-MM-DD`, em GMT-03:00) para o qual o resultado é calculado (RN-09). Sem o parâmetro, vale hoje. Nada é gravado: é só a data usada na conta.
+      schema:
+        type: string
+        format: date
+      example: "2026-12-01"
+
   examples:
     OperacaoPrice:
-      summary: Operação PRICE
+      summary: Operação PRICE em dia (dataReferencia 2026-11-30)
       value:
         id: 1
         numeroOperacao: OP-2026-0001
         clienteId: "52998224725"
         tipoPessoa: PF
         status: ATIVA
+        diasEmAtraso: 0
         definidoEm: "2026-10-08T18:12:40Z"
         dataLiberacao: "2026-10-30"
         saldoDevedor: 10000
@@ -437,18 +512,94 @@ components:
           mensal: 0.0227
           anual: 0.3089
         criadoEm: "2026-10-08T18:13:02Z"
-
-    OperacaoPriceEmAtraso:
-      summary: Operação PRICE sem pagamentos em 2026-12-10
+    OperacaoEmAtraso:
+      summary: Operação PRICE com a parcela 1 vencida há 1 dia (dataReferencia 2026-12-01)
       value:
         id: 1
         numeroOperacao: OP-2026-0001
         clienteId: "52998224725"
         tipoPessoa: PF
         status: EM_ATRASO
+        diasEmAtraso: 1
         definidoEm: "2026-10-08T18:12:40Z"
         dataLiberacao: "2026-10-30"
         saldoDevedor: 10000
+        produto:
+          codigo: CONSIGNADO_INSS
+          nome: Crédito pessoal consignado INSS
+          modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+        condicoesFinanceiras:
+          valorAprovado: 10000
+          prazoMeses: 12
+          quantidadeParcelas: 12
+          taxaJuros: 0.0185
+          taxaJurosAnual: 0.246
+          faixaRisco: B
+          tetoAplicado: true
+          sistemaAmortizacao: PRICE
+          primeiroVencimento: "2026-11-30"
+        encargos:
+          iof:
+            diario: 167.65
+            adicional: 38
+            total: 205.65
+          tarifaCadastro: 50
+          total: 255.65
+        valorLiberado: 9744.35
+        cet:
+          mensal: 0.0227
+          anual: 0.3089
+        criadoEm: "2026-10-08T18:13:02Z"
+    OperacaoInadimplente:
+      summary: Operação PRICE com a parcela 1 vencida há 91 dias (dataReferencia 2027-03-01)
+      value:
+        id: 1
+        numeroOperacao: OP-2026-0001
+        clienteId: "52998224725"
+        tipoPessoa: PF
+        status: INADIMPLENTE
+        diasEmAtraso: 91
+        definidoEm: "2026-10-08T18:12:40Z"
+        dataLiberacao: "2026-10-30"
+        saldoDevedor: 10000
+        produto:
+          codigo: CONSIGNADO_INSS
+          nome: Crédito pessoal consignado INSS
+          modalidadeBcb: Crédito pessoal consignado INSS - Prefixado
+        condicoesFinanceiras:
+          valorAprovado: 10000
+          prazoMeses: 12
+          quantidadeParcelas: 12
+          taxaJuros: 0.0185
+          taxaJurosAnual: 0.246
+          faixaRisco: B
+          tetoAplicado: true
+          sistemaAmortizacao: PRICE
+          primeiroVencimento: "2026-11-30"
+        encargos:
+          iof:
+            diario: 167.65
+            adicional: 38
+            total: 205.65
+          tarifaCadastro: 50
+          total: 255.65
+        valorLiberado: 9744.35
+        cet:
+          mensal: 0.0227
+          anual: 0.3089
+        criadoEm: "2026-10-08T18:13:02Z"
+    OperacaoLiquidada:
+      summary: Operação liquidada, continua LIQUIDADA em qualquer data
+      value:
+        id: 1
+        numeroOperacao: OP-2026-0001
+        clienteId: "52998224725"
+        tipoPessoa: PF
+        status: LIQUIDADA
+        diasEmAtraso: 0
+        definidoEm: "2026-10-08T18:12:40Z"
+        dataLiberacao: "2026-10-30"
+        saldoDevedor: 0
         produto:
           codigo: CONSIGNADO_INSS
           nome: Crédito pessoal consignado INSS
@@ -477,22 +628,6 @@ components:
         criadoEm: "2026-10-08T18:13:02Z"
 
   responses:
-    ConsultaInvalida:
-      description: Identificador inválido, data inválida ou anterior à última movimentação financeira (RN-09).
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Erro"
-          examples:
-            identificadorInvalido:
-              value:
-                erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
-            dataReferenciaInvalida:
-              value:
-                erro: dataReferencia deve estar no formato YYYY-MM-DD
-            dataReferenciaAnterior:
-              value:
-                erro: dataReferencia não pode ser anterior à data da última movimentação financeira da operação
     IdentificadorInvalido:
       description: O identificador não é um id nem um número de operação.
       content:
@@ -751,7 +886,7 @@ components:
 
     Operacao:
       type: object
-      required: [id, numeroOperacao, clienteId, tipoPessoa, status, definidoEm, dataLiberacao, saldoDevedor, produto, condicoesFinanceiras, encargos, valorLiberado, cet, criadoEm]
+      required: [id, numeroOperacao, clienteId, tipoPessoa, status, diasEmAtraso, definidoEm, dataLiberacao, saldoDevedor, produto, condicoesFinanceiras, encargos, valorLiberado, cet, criadoEm]
       properties:
         id:
           type: integer
@@ -772,6 +907,11 @@ components:
           enum: [PF, PJ]
         status:
           $ref: "#/components/schemas/StatusOperacao"
+        diasEmAtraso:
+          type: integer
+          minimum: 0
+          description: Maior atraso, em dias corridos, entre as parcelas em aberto na `dataReferencia` (RN-10). É `0` quando não há parcela vencida e nas operações `LIQUIDADA`. Calculado na consulta, nunca gravado.
+          example: 0
         definidoEm:
           type: string
           format: date-time
@@ -951,9 +1091,16 @@ components:
     StatusOperacao:
       type: string
       enum: [ATIVA, EM_ATRASO, INADIMPLENTE, RENEGOCIADA, LIQUIDADA]
-      description: ATIVA com parcela vencida é exibida como EM_ATRASO (RN-11), sem persistir o atraso. LIQUIDADA permanece LIQUIDADA. INADIMPLENTE será tratado na história #8 e RENEGOCIADA em fase futura.
+      description: |
+        Calculado na consulta, para a `dataReferencia`, e nunca gravado (RN-11 e RN-12), exceto `LIQUIDADA`:
+
+        - `ATIVA`: nenhuma parcela vencida em aberto;
+        - `EM_ATRASO`: alguma parcela vencida há 1 a 90 dias;
+        - `INADIMPLENTE`: alguma parcela vencida há mais de 90 dias;
+        - `LIQUIDADA`: quitada; continua `LIQUIDADA` em qualquer data de referência;
+        - `RENEGOCIADA`: prevista, depende de outro grupo.
 
     StatusParcela:
       type: string
       enum: [PENDENTE, PAGA, PARCIALMENTE_PAGA, VENCIDA]
-      description: VENCIDA quando não paga por inteiro e dataReferencia posterior ao vencimento (RN-10 e RN-11), prevalecendo sobre PENDENTE e PARCIALMENTE_PAGA na resposta. PAGA permanece PAGA. O estado calculado não é gravado.
+      description: Por enquanto toda parcela é `PENDENTE`. Os demais status são previstos para as próximas fases.
