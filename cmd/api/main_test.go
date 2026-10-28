@@ -38,6 +38,13 @@ func TestOpenAPIValido(t *testing.T) {
 	}
 }
 
+// rotas já descritas no openapi.yaml cujo código ainda não existe: o PR de contrato vem antes
+// do de implementação. O PR de implementação tira a rota daqui.
+var rotasSoNoContrato = map[string]bool{
+	"GET /operacoes/{identificador}/amortizacoes/simulacao": true,
+	"POST /operacoes/{identificador}/amortizacoes":          true,
+}
+
 // se alguém criar ou remover uma rota sem atualizar o openapi.yaml, este teste quebra.
 func TestOpenAPICobreTodasAsRotas(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -55,7 +62,11 @@ func TestOpenAPICobreTodasAsRotas(t *testing.T) {
 	documentadas := map[string]bool{}
 	for caminho, item := range carregarSpec(t).Paths.Map() {
 		for metodo := range item.Operations() {
-			documentadas[metodo+" "+caminho] = true
+			chave := metodo + " " + caminho
+			if rotasSoNoContrato[chave] {
+				continue
+			}
+			documentadas[chave] = true
 		}
 	}
 
