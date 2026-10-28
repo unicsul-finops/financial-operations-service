@@ -25,6 +25,8 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `POST` | `/operacoes/:identificador/parcelas/:numero/pagamentos` | Registra o pagamento de uma parcela (RN-14) | `201` (novo) / `200` (reenvio) |
 | `GET` | `/operacoes/:identificador/amortizacoes/simulacao` | Simula a antecipação das últimas parcelas | `200` |
 | `POST` | `/operacoes/:identificador/amortizacoes` | Registra a antecipação das últimas parcelas | `201` (nova) / `200` (reenvio) |
+| `GET` | `/operacoes/:identificador/liquidacao` | Valor para quitar na `dataReferencia` (opcional) (RN-18) | `200` |
+| `POST` | `/operacoes/:identificador/liquidacao` | Quita a operação antes do prazo (RN-18) | `201` (nova) / `200` (reenvio) |
 
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
@@ -285,6 +287,44 @@ Resposta `201` (com `Location: /operacoes/OP-2026-0001/historico`) ou `200` no r
 - `parcela.status` é o gravado (`PARCIALMENTE_PAGA` ou `PAGA`); na consulta de parcelas, uma parcial ainda vencida aparece como `VENCIDA` (RN-11).
 - `operacao.status` é calculado na `dataPagamento`. Quitar a última parcela em aberto deixa a operação `LIQUIDADA` e grava também um evento `LIQUIDACAO` sem valor (RN-19).
 
+## `GET /operacoes/:identificador/liquidacao`
+
+Valor para quitar na `dataReferencia` (RN-18): vencidas em aberto com encargos + a vencer pelo valor presente (RN-16), sem tarifa. A parcela que vence no próprio dia entra em `aVencer` pelo valor em aberto, sem desconto. O valor presente de cada parcela é arredondado ao centavo e o total é a soma delas. Operação `LIQUIDADA` → `400`.
+
+Com as parcelas 1 e 2 pagas, em `2027-01-15` (parcelas abreviadas; lista completa no OpenAPI):
+
+```json
+{
+  "numeroOperacao": "OP-2026-0001",
+  "dataReferencia": "2027-01-15",
+  "valorParaQuitar": 8558,
+  "saldoDevedor": 8482.27,
+  "vencidas": { "parcelas": [], "total": 0 },
+  "aVencer": {
+    "parcelas": [
+      { "numero": 3, "vencimento": "2027-02-01", "valorEmAberto": 936.91, "valorPresente": 928.1, "desconto": 8.81 }
+    ],
+    "valorNominal": 9369.06,
+    "valorPresente": 8558,
+    "desconto": 811.06,
+    "amortizacao": 8482.27,
+    "juros": 75.73
+  }
+}
+```
+
+Em `2026-12-30`, dia do vencimento da parcela 2, o valor para quitar é `8482.27`, igual ao saldo devedor, e `juros` é zero.
+
+## `POST /operacoes/:identificador/liquidacao`
+
+```json
+{ "valor": 8558, "dataPagamento": "2027-01-15", "identificadorPagamento": "app-9c41d0" }
+```
+
+- `valor` obrigatório e **igual** ao `valorParaQuitar` na `dataPagamento`; `dataPagamento`, `identificadorPagamento` e `origem` seguem as regras do pagamento de parcela.
+- Resposta `201` (com `Location: /operacoes/OP-2026-0001/historico`) ou `200` no reenvio. Traz um lançamento por vencida (`vencidas[].distribuicao`), o lançamento único das a vencer (`aVencer`: `parcelas`, `valorNominal`, `desconto`, `amortizacao`, `juros`, `valor`) e a operação `LIQUIDADA` com saldo `0`.
+- Depois disso, pagamento, amortização e liquidação → `400`.
+
 ## `GET /operacoes/:identificador/amortizacoes/simulacao`
 
 Simula a antecipação das **últimas** `quantidadeParcelas` parcelas em aberto, sem gravar nada ([RN-16](../../requirements/regras-de-negocio-fase-2.md#rn-16-valor-presente) e [RN-17](../../requirements/regras-de-negocio-fase-2.md#rn-17-amortização-antecipada-parcial)):
@@ -445,6 +485,13 @@ Mensagens do pagamento de parcela:
 | `a parcela N ainda não pode ser paga, só as vencidas e a próxima a vencer` |
 | `valor maior que o total para quitar a parcela N em YYYY-MM-DD, que é X` |
 | `identificadorPagamento já foi usado em outra movimentação da operação` |
+
+Mensagens da liquidação (além das de `valor`, `dataPagamento`, `identificadorPagamento` e `origem` acima):
+
+| Mensagem |
+| --- |
+| `valor deve ser igual ao valor para quitar em YYYY-MM-DD, que é X` |
+| `a operação já está liquidada` |
 
 Mensagens da simulação e da amortização antecipada (os números mudam conforme a operação):
 
