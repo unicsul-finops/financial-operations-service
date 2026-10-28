@@ -1227,6 +1227,105 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Contrato #7 — multa e juros de mora",
+      "description": "Contrato proposto: executar estes pedidos somente depois da implementação aprovada. Use PRICE OP-2026-0001 sem pagamentos. Na API atual os testes novos falham porque os campos ainda não existem. O segundo pedido contém exemplos salvos de pagamento parcial da RN-14 e PAGA: são exemplos, não resultados executados. O pagamento depende da #9 e não é criado por esta pasta.",
+      "item": [
+        {
+          "name": "No vencimento em 2026-11-30 — encargos zero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-11-30"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores RN-13\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.lengthOf(12);",
+                  "  const p = body[0];",
+                  "  pm.expect(p.status).to.equal(\"PENDENTE\");",
+                  "  pm.expect(p.diasEmAtraso).to.equal(0);",
+                  "  body.forEach(function (x) { pm.expect(x.encargos).to.deep.equal({ multa: 0, jurosMora: 0, total: 0 }); pm.expect(x.totalParaQuitar).to.equal(x.valorEmAberto); });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dez dias em 2026-12-10 — total para quitar 958,77",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores RN-13\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.lengthOf(12);",
+                  "  const p = body[0];",
+                  "  pm.expect(p.status).to.equal(\"VENCIDA\");",
+                  "  pm.expect(p.diasEmAtraso).to.equal(10);",
+                  "  pm.expect(p.valorEmAberto).to.equal(936.91);",
+                  "  pm.expect(p.encargos).to.deep.equal({ multa: 18.74, jurosMora: 3.12, total: 21.86 });",
+                  "  pm.expect(p.totalParaQuitar).to.equal(958.77);",
+                  "  body.slice(1).forEach(function (x) { pm.expect(x.encargos).to.deep.equal({ multa: 0, jurosMora: 0, total: 0 }); pm.expect(x.totalParaQuitar).to.equal(x.valorEmAberto); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Exemplo RN-14 — requer pagamento parcial previamente registrado",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-20"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"numero\": 1,\n    \"vencimento\": \"2026-11-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 751.91,\n    \"juros\": 185,\n    \"saldoDevedor\": 9248.09,\n    \"status\": \"VENCIDA\",\n    \"valorEmAberto\": 458.77,\n    \"diasEmAtraso\": 20,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 1.53,\n      \"total\": 1.53\n    },\n    \"totalParaQuitar\": 460.3\n  },\n  {\n    \"numero\": 2,\n    \"vencimento\": \"2026-12-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 765.82,\n    \"juros\": 171.09,\n    \"saldoDevedor\": 8482.27,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 3,\n    \"vencimento\": \"2027-02-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 779.99,\n    \"juros\": 156.92,\n    \"saldoDevedor\": 7702.28,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 4,\n    \"vencimento\": \"2027-03-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 794.42,\n    \"juros\": 142.49,\n    \"saldoDevedor\": 6907.86,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 5,\n    \"vencimento\": \"2027-03-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 809.11,\n    \"juros\": 127.8,\n    \"saldoDevedor\": 6098.75,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 6,\n    \"vencimento\": \"2027-04-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 824.08,\n    \"juros\": 112.83,\n    \"saldoDevedor\": 5274.67,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 7,\n    \"vencimento\": \"2027-05-31\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 839.33,\n    \"juros\": 97.58,\n    \"saldoDevedor\": 4435.34,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 8,\n    \"vencimento\": \"2027-06-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 854.86,\n    \"juros\": 82.05,\n    \"saldoDevedor\": 3580.48,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 9,\n    \"vencimento\": \"2027-07-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 870.67,\n    \"juros\": 66.24,\n    \"saldoDevedor\": 2709.81,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 10,\n    \"vencimento\": \"2027-08-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 886.78,\n    \"juros\": 50.13,\n    \"saldoDevedor\": 1823.03,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 11,\n    \"vencimento\": \"2027-09-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 903.18,\n    \"juros\": 33.73,\n    \"saldoDevedor\": 919.85,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.91,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.91\n  },\n  {\n    \"numero\": 12,\n    \"vencimento\": \"2027-11-01\",\n    \"valorParcela\": 936.87,\n    \"amortizacao\": 919.85,\n    \"juros\": 17.02,\n    \"saldoDevedor\": 0,\n    \"status\": \"PENDENTE\",\n    \"valorEmAberto\": 936.87,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 936.87\n  }\n]"
+            },
+            {
+              "name": "Exemplo PAGA — requer parcelas previamente quitadas",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-20"
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"numero\": 1,\n    \"vencimento\": \"2026-11-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 751.91,\n    \"juros\": 185,\n    \"saldoDevedor\": 9248.09,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 2,\n    \"vencimento\": \"2026-12-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 765.82,\n    \"juros\": 171.09,\n    \"saldoDevedor\": 8482.27,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 3,\n    \"vencimento\": \"2027-02-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 779.99,\n    \"juros\": 156.92,\n    \"saldoDevedor\": 7702.28,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 4,\n    \"vencimento\": \"2027-03-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 794.42,\n    \"juros\": 142.49,\n    \"saldoDevedor\": 6907.86,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 5,\n    \"vencimento\": \"2027-03-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 809.11,\n    \"juros\": 127.8,\n    \"saldoDevedor\": 6098.75,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 6,\n    \"vencimento\": \"2027-04-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 824.08,\n    \"juros\": 112.83,\n    \"saldoDevedor\": 5274.67,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 7,\n    \"vencimento\": \"2027-05-31\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 839.33,\n    \"juros\": 97.58,\n    \"saldoDevedor\": 4435.34,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 8,\n    \"vencimento\": \"2027-06-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 854.86,\n    \"juros\": 82.05,\n    \"saldoDevedor\": 3580.48,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 9,\n    \"vencimento\": \"2027-07-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 870.67,\n    \"juros\": 66.24,\n    \"saldoDevedor\": 2709.81,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 10,\n    \"vencimento\": \"2027-08-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 886.78,\n    \"juros\": 50.13,\n    \"saldoDevedor\": 1823.03,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 11,\n    \"vencimento\": \"2027-09-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 903.18,\n    \"juros\": 33.73,\n    \"saldoDevedor\": 919.85,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 12,\n    \"vencimento\": \"2027-11-01\",\n    \"valorParcela\": 936.87,\n    \"amortizacao\": 919.85,\n    \"juros\": 17.02,\n    \"saldoDevedor\": 0,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  }\n]"
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

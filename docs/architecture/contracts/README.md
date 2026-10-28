@@ -21,7 +21,7 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `POST` | `/operacoes` | Registra a operação definida no juros, com o calendário | `201` (nova) / `200` (reenvio) |
 | `GET` | `/operacoes` | Lista as operações (sem as parcelas) | `200` |
 | `GET` | `/operacoes/:identificador` | Consulta a situação na `dataReferencia` (opcional) | `200` |
-| `GET` | `/operacoes/:identificador/parcelas` | Consulta parcelas e atraso na `dataReferencia` (opcional) | `200` |
+| `GET` | `/operacoes/:identificador/parcelas` | Consulta parcelas, atraso e encargos na `dataReferencia` (opcional) | `200` |
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
 
@@ -192,11 +192,11 @@ GET /operacoes/1              (pelo id interno, também aceito)
 
 ## `GET /operacoes/:identificador/parcelas`
 
-Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validações de `dataReferencia` da consulta da operação (RN-09, RN-10 e RN-11). Exemplo da primeira parcela sem pagamentos em `2026-12-10` (calendário completo no OpenAPI):
+Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validações de `dataReferencia` da consulta da operação (RN-09, RN-10, RN-11 e RN-13). Exemplo da primeira parcela sem pagamentos em `2026-12-10` (calendário completo no OpenAPI):
 
 ```json
 [
-  { "numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "VENCIDA", "valorEmAberto": 936.91, "diasEmAtraso": 10 }
+  { "numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "VENCIDA", "valorEmAberto": 936.91, "diasEmAtraso": 10, "encargos": { "multa": 18.74, "jurosMora": 3.12, "total": 21.86 }, "totalParaQuitar": 958.77 }
 ]
 ```
 
@@ -211,6 +211,28 @@ Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validaçõe
 | `status` | `VENCIDA` se não paga por inteiro e a referência é posterior ao vencimento; prevalece sobre `PENDENTE` e `PARCIALMENTE_PAGA`. `PAGA` permanece `PAGA`. Apenas calculado, sem gravar. |
 | `valorEmAberto` | Juros + amortização − juros pagos − amortização paga − desconto concedido (RN-13), sem multa/mora. `PAGA` sempre tem zero. |
 | `diasEmAtraso` | Dias corridos desde o vencimento se vencida; zero antes, no vencimento ou se paga. |
+| `encargos` | Objeto obrigatório com `multa`, `jurosMora` e `total` em aberto na referência, sempre presentes (RN-13). |
+| `totalParaQuitar` | `valorEmAberto + encargos.total`, em reais; zero para PAGA. Não é a liquidação antecipada da operação (RN-18). |
+
+### Encargos por atraso (RN-13)
+
+Multa: 2% da base em aberto no primeiro dia de atraso, fixada nesse dia, menos multa paga. Mora: 1% ao mês, simples, por dia (divisor 30), sobre a base de cada trecho. O pagamento reduz a base a partir da sua data. Não há juros sobre multa nem capitalização.
+
+Arredondar ao centavo, meio para cima, no resultado acumulado, sem arredondar cada dia ou trecho. Subtrair os pagamentos dos respectivos componentes. `total` soma multa e mora em aberto. Sem atraso: encargos zero. PAGA: valor em aberto, encargos e total para quitar zero, inclusive com desconto. Os encargos não são gravados.
+
+| Situação da parcela 1 PRICE | Referência | Em aberto | Multa em aberto | Mora em aberto | Encargos em aberto | Total para quitar |
+| --- | --- | --- | --- | --- | --- | --- |
+| Sem pagamentos, no vencimento | 2026-11-30 | 936,91 | 0 | 0 | 0 | 936,91 |
+| Sem pagamentos, 10 dias | 2026-12-10 | 936,91 | 18,74 | 3,12 | 21,86 | 958,77 |
+| Após pagamento parcial de 500 em 10/12 (RN-14) | 2026-12-20 | 458,77 | 0 | 1,53 | 1,53 | 460,30 |
+| PAGA | Referência válida após quitação | 0 | 0 | 0 | 0 | 0 |
+
+O pagamento parcial distribui 18,74 para multa, 3,12 para mora, 185 para juros e 293,14 para amortização. Em 20/12 a mora acumulada é 4,65, menos 3,12 pagos = 1,53 em aberto. O estado gravado é PARCIALMENTE_PAGA, exibido VENCIDA na consulta (RN-11).
+
+Os erros de referência inválida ou anterior à última movimentação são os mesmos da RN-09; esta história não cria erros de entrada novos. O parâmetro DataReferencia e o schema de erros são reaproveitados da #6.
+
+A pasta Contrato #7 da coleção contém dois pedidos sem pagamento e respostas salvas para pagamento parcial e PAGA. Respostas salvas são exemplos do contrato, não evidência de execução. O cenário parcial exige preparar os lançamentos da RN-14; registrar pagamento pertence à #9. Os campos novos só funcionarão após aprovação do contrato e implementação em PR posterior.
+
 
 ## `GET /health`
 
