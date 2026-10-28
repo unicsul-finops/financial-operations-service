@@ -20,8 +20,8 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `GET` | `/health` | Verifica se o serviço está no ar | `200` |
 | `POST` | `/operacoes` | Registra a operação definida no juros, com o calendário | `201` (nova) / `200` (reenvio) |
 | `GET` | `/operacoes` | Lista as operações (sem as parcelas) | `200` |
-| `GET` | `/operacoes/:identificador` | Consulta a situação na `dataReferencia` (opcional) | `200` |
-| `GET` | `/operacoes/:identificador/parcelas` | Consulta parcelas e atraso na `dataReferencia` (opcional) | `200` |
+| `GET` | `/operacoes/:identificador` | Consulta a situação de uma operação | `200` |
+| `GET` | `/operacoes/:identificador/parcelas` | Consulta o cronograma de parcelas | `200` |
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
 
@@ -137,6 +137,8 @@ O calendário não é recalculado, mas precisa fechar:
 
 Lista todas as operações, da mais recente para a mais antiga, no mesmo formato do `GET /operacoes/:identificador`. Sem operações cadastradas, devolve `[]`.
 
+Aceita a query opcional `dataReferencia` (`YYYY-MM-DD`, GMT-03:00; sem ela, vale hoje). O `status` e o `diasEmAtraso` de cada operação são calculados para essa data, com as regras descritas em [`GET /operacoes/:identificador`](#get-operacoesidentificador).
+
 ## `GET /operacoes/:identificador`
 
 Situação atual da operação, com todos os dados registrados:
@@ -144,6 +146,7 @@ Situação atual da operação, com todos os dados registrados:
 ```text
 GET /operacoes/OP-2026-0001
 GET /operacoes/1              (pelo id interno, também aceito)
+GET /operacoes/OP-2026-0001?dataReferencia=2026-12-01   (situação calculada para esse dia)
 ```
 
 ```json
@@ -153,6 +156,7 @@ GET /operacoes/1              (pelo id interno, também aceito)
   "clienteId": "52998224725",
   "tipoPessoa": "PF",
   "status": "ATIVA",
+  "diasEmAtraso": 0,
   "definidoEm": "2026-10-08T18:12:40Z",
   "dataLiberacao": "2026-10-30",
   "saldoDevedor": 10000,
@@ -185,18 +189,28 @@ GET /operacoes/1              (pelo id interno, também aceito)
 
 - `definidoEm` saiu 3 horas depois do enviado porque `15:12:40` em GMT-03:00 é `18:12:40` em UTC.
 - O `saldoDevedor` começa no valor cheio: os encargos são descontados na liberação, não financiados.
-- RN-09, RN-10 e RN-11: `?dataReferencia=YYYY-MM-DD` é opcional; omitido, vale hoje em GMT-03:00. Data vazia ou inexistente é inválida. Datas futuras são permitidas.
-- A data não pode ser anterior ao último pagamento, amortização ou liquidação da operação; a mesma data é aceita. A consulta não reconstrói estados anteriores.
-- Uma operação `ATIVA` com parcela vencida sai como `EM_ATRASO`; `LIQUIDADA` permanece `LIQUIDADA`. Nenhum atraso é gravado. O corte de inadimplência pertence à #8.
-- Exemplo sem pagamentos: `2026-11-30` → `ATIVA`; `2026-12-10` → `EM_ATRASO`.
+- Por enquanto o `saldoDevedor` é igual ao `valorAprovado`, porque ainda não há pagamentos.
+- O `status` e o `diasEmAtraso` são **calculados na consulta**, para a `dataReferencia` (padrão: hoje, GMT-03:00), e nunca gravados ([RN-11](../../requirements/regras-de-negocio-fase-2.md#rn-11-situação-calculada-na-consulta) e [RN-12](../../requirements/regras-de-negocio-fase-2.md#rn-12-inadimplência)). `EM_ATRASO` quando há parcela vencida em aberto com 1 a 90 dias de atraso, e `INADIMPLENTE` quando alguma tem mais de 90 dias.
+- `diasEmAtraso` é o maior atraso, em dias corridos, entre as parcelas em aberto, ou `0` sem atraso.
+- Operação `LIQUIDADA` continua `LIQUIDADA` em qualquer data de referência, com `diasEmAtraso` `0`.
+- Pagar as parcelas vencidas faz a operação voltar a `EM_ATRASO` ou `ATIVA` sozinha, sem nenhuma ação extra.
+
+Exemplo, `OP-2026-0001` sem pagamentos (1ª parcela vence em 30/11/2026):
+
+| `dataReferencia` | `status` | `diasEmAtraso` |
+| --- | --- | --- |
+| `2026-11-30` | `ATIVA` | `0` |
+| `2026-12-01` | `EM_ATRASO` | `1` |
+| `2027-02-28` | `EM_ATRASO` | `90` |
+| `2027-03-01` | `INADIMPLENTE` | `91` |
 
 ## `GET /operacoes/:identificador/parcelas`
 
-Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validações de `dataReferencia` da consulta da operação (RN-09, RN-10 e RN-11). Exemplo da primeira parcela sem pagamentos em `2026-12-10` (calendário completo no OpenAPI):
+Cronograma completo, ordenado por `numero`:
 
 ```json
 [
-  { "numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "VENCIDA", "valorEmAberto": 936.91, "diasEmAtraso": 10 }
+  { "numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "PENDENTE" }
 ]
 ```
 
@@ -208,9 +222,7 @@ Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validaçõe
 | `amortizacao` | Parte do principal paga na parcela. |
 | `juros` | Juros do período. |
 | `saldoDevedor` | Saldo após a parcela. É `0` na última. |
-| `status` | `VENCIDA` se não paga por inteiro e a referência é posterior ao vencimento; prevalece sobre `PENDENTE` e `PARCIALMENTE_PAGA`. `PAGA` permanece `PAGA`. Apenas calculado, sem gravar. |
-| `valorEmAberto` | Juros + amortização − juros pagos − amortização paga − desconto concedido (RN-13), sem multa/mora. `PAGA` sempre tem zero. |
-| `diasEmAtraso` | Dias corridos desde o vencimento se vencida; zero antes, no vencimento ou se paga. |
+| `status` | `PENDENTE` por enquanto. Previstos: `PAGA`, `PARCIALMENTE_PAGA` e `VENCIDA`. |
 
 ## `GET /health`
 
@@ -224,9 +236,9 @@ Cronograma completo, ordenado por `numero`, com o mesmo parâmetro e validaçõe
 
 | Status | Situação |
 | --- | --- |
-| `ATIVA` | Operação registrada, sem parcelas vencidas na data de referência. |
-| `EM_ATRASO` | Fase 2 ([#8](https://github.com/unicsul-finops/financial-operations-service/issues/8)): há parcela vencida sem pagamento. Calculado na consulta ([RN-11](../../requirements/regras-de-negocio-fase-2.md#rn-11-situação-calculada-na-consulta)). |
-| `INADIMPLENTE` | Fase 2 ([#8](https://github.com/unicsul-finops/financial-operations-service/issues/8)): alguma parcela com mais de 90 dias de atraso. Calculado na consulta ([RN-12](../../requirements/regras-de-negocio-fase-2.md#rn-12-inadimplência)). |
+| `ATIVA` | Operação registrada e sem parcela vencida em aberto. |
+| `EM_ATRASO` | Fase 2 ([#8](https://github.com/unicsul-finops/financial-operations-service/issues/8)): há parcela vencida em aberto, com 1 a 90 dias de atraso. Calculado na consulta, para a `dataReferencia` ([RN-11](../../requirements/regras-de-negocio-fase-2.md#rn-11-situação-calculada-na-consulta)). |
+| `INADIMPLENTE` | Fase 2 ([#8](https://github.com/unicsul-finops/financial-operations-service/issues/8)): alguma parcela com mais de 90 dias de atraso. Calculado na consulta, para a `dataReferencia` ([RN-12](../../requirements/regras-de-negocio-fase-2.md#rn-12-inadimplência)). |
 | `RENEGOCIADA` | Previsto: novas condições negociadas. Depende de outro grupo. |
 | `LIQUIDADA` | Fase 2 ([#11](https://github.com/unicsul-finops/financial-operations-service/issues/11)): quitada pela liquidação ou pelo pagamento da última parcela ([RN-18 e RN-19](../../requirements/regras-de-negocio-fase-2.md#rn-18-liquidação-antecipada-total)). |
 
@@ -243,8 +255,7 @@ Todos os erros têm o formato:
 | `400` | JSON malformado ou com tipo errado | `corpo da requisição inválido` |
 | `400` | Regra de validação violada | `apenas operações com operacao.estado DEFINIDA podem ser registradas` |
 | `400` | `:identificador` que não é número de operação nem id | `identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)` |
-| `400` | Data vazia, inexistente ou fora do formato | `dataReferencia deve estar no formato YYYY-MM-DD` |
-| `400` | Data anterior à última movimentação financeira | `dataReferencia não pode ser anterior à data da última movimentação financeira da operação` |
+| `400` | `dataReferencia` fora do formato | `dataReferencia deve estar no formato YYYY-MM-DD` |
 | `404` | Operação não existe | `operação não encontrada` |
 | `404` | Rota que não existe | `rota não encontrada` |
 | `405` | Método não aceito numa rota que existe (ex.: `DELETE /operacoes/1`). O header `Allow` traz os métodos aceitos. | `método não permitido nesta rota` |
