@@ -28,6 +28,7 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `GET` | `/operacoes/:identificador/liquidacao` | Valor para quitar na `dataReferencia` (opcional) (RN-18) | `200` |
 | `POST` | `/operacoes/:identificador/liquidacao` | Quita a operação antes do prazo (RN-18) | `201` (nova) / `200` (reenvio) |
 | `GET` | `/operacoes/:identificador/resumo` | Resumo financeiro na `dataReferencia` (opcional) (RN-20) | `200` |
+| `GET` | `/operacoes/:identificador/historico` | Histórico de eventos na `dataReferencia` (opcional) (RN-21) | `200` |
 
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
@@ -416,6 +417,38 @@ Exemplo depois do pagamento parcial de 500,00 em 10/12/2026 (RN-14), consultado 
 - `totalPago = valorAmortizado + jurosPagos + encargosPagos`, sempre. O `descontoAntecipacao` não é dinheiro recebido e fica fora do `totalPago`.
 - `valorParaQuitar` é o mesmo valor do `GET /liquidacao` na mesma data e é `0` em operação `LIQUIDADA`.
 - `valorVencido` e `encargosEmAberto` consideram só as parcelas vencidas na data; sem atraso, os dois são `0`.
+- Erros: os mesmos da consulta da operação (identificador inválido, `dataReferencia` inválida ou anterior à última movimentação, operação inexistente).
+
+## `GET /operacoes/:identificador/historico`
+
+Eventos da operação em ordem cronológica (RN-21): o mais antigo primeiro e, no mesmo dia, o gravado antes do calculado. A `dataReferencia` tem as regras da consulta da operação (RN-09). `POST /operacoes` passa a gravar o evento `OPERACAO_REGISTRADA` na mesma transação, e os pagamentos, amortizações e liquidações já gravam o deles.
+
+Exemplo: registro, atraso calculado e pagamento parcial de 500,00 em 10/12/2026 (RN-14), consultado no mesmo dia:
+
+```json
+[
+  { "id": 1, "tipo": "OPERACAO_REGISTRADA", "origem": "REGISTRADO", "dataEfeito": "2026-10-30", "registradoEm": "2026-10-08T18:13:02Z", "lancamentos": [] },
+  { "tipo": "PARCELA_VENCIDA", "origem": "CALCULADO", "dataEfeito": "2026-12-01", "numeroParcela": 1, "lancamentos": [], "descricao": "parcela 1 vencida em 2026-12-01" },
+  {
+    "id": 2, "tipo": "PAGAMENTO", "origem": "REGISTRADO", "dataEfeito": "2026-12-10", "registradoEm": "2026-12-10T13:20:05Z",
+    "valor": 500, "identificadorPagamento": "app-7f3a91", "origemPagamento": "CLIENTE",
+    "lancamentos": [ { "numeroParcela": 1, "multa": 18.74, "jurosMora": 3.12, "juros": 185, "amortizacao": 293.14, "desconto": 0 } ]
+  }
+]
+```
+
+| Campo | Quando aparece |
+| --- | --- |
+| `origem` | Sempre. `REGISTRADO` é um evento gravado e nunca alterado; `CALCULADO` sai da situação na `dataReferencia` e não é gravado (RN-11). |
+| `tipo` | Sempre: `OPERACAO_REGISTRADA`, `PAGAMENTO`, `AMORTIZACAO_ANTECIPADA`, `LIQUIDACAO` (gravados) ou `PARCELA_VENCIDA`, `OPERACAO_INADIMPLENTE` (calculados). |
+| `id`, `registradoEm` | Só nos eventos gravados. |
+| `valor` | Só nos eventos que recebem dinheiro. O registro da operação e o encerramento automático (RN-19) não têm. |
+| `identificadorPagamento`, `origemPagamento` | Só quando foram enviados. `origemPagamento` é a `origem` do pagamento (`CLIENTE`, `INSS`…), separada da `origem` do item. |
+| `numeroParcela`, `descricao` | Só nos itens calculados de atraso. |
+| `lancamentos` | Sempre, `[]` quando não há dinheiro. `numeroParcela` nulo é o lançamento da operação, das parcelas a vencer na liquidação (RN-18). |
+
+- `PARCELA_VENCIDA` aparece no dia seguinte ao vencimento de uma parcela que esteve em atraso até a data: ainda em aberto, ou quitada depois do vencimento. Parcela paga em dia não aparece.
+- `OPERACAO_INADIMPLENTE` aparece no 91º dia de atraso de alguma parcela (RN-12): `2026-11-30` + 91 dias = `2027-03-01`.
 - Erros: os mesmos da consulta da operação (identificador inválido, `dataReferencia` inválida ou anterior à última movimentação, operação inexistente).
 
 ## `GET /health`
