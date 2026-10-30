@@ -1,0 +1,43 @@
+# sobe o banco e a API juntos, para rodar numa máquina sem Go nem PostgreSQL (ver ADR-013):
+#
+#   docker compose up -d --build
+#
+# painel em http://localhost:8083/ e swagger em http://localhost:8083/swagger.
+name: finops
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: finops
+      POSTGRES_USER: finops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finops}
+    volumes:
+      # a partir do PostgreSQL 18 a imagem guarda os dados numa subpasta versionada de /var/lib/postgresql.
+      - pgdata:/var/lib/postgresql
+      # o postgres roda os .sql desta pasta, em ordem, só na primeira vez que o volume está vazio (ADR-007).
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finops -d finops"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: .
+    image: finops-api:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "8083"
+      DATABASE_URL: postgres://finops:${POSTGRES_PASSWORD:-finops}@db:5432/finops?sslmode=disable
+      # liberado, como combinado; para restringir, liste as origens separadas por vírgula.
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    ports:
+      - "${API_PORT:-8083}:8083"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
