@@ -48,7 +48,7 @@ func TestOpenAPICobreTodasAsRotas(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	registradas := map[string]bool{}
-	for _, rota := range novoRouter(nil).Routes() {
+	for _, rota := range novoRouter(nil, nil).Routes() {
 		chave := rota.Method + " " + rota.Path
 		if rotasDeDocumentacao[chave] {
 			continue
@@ -79,7 +79,7 @@ func TestOpenAPICobreTodasAsRotas(t *testing.T) {
 func TestPainelResponde(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	resposta := httptest.NewRecorder()
-	novoRouter(nil).ServeHTTP(resposta, httptest.NewRequest(http.MethodGet, "/", nil))
+	novoRouter(nil, nil).ServeHTTP(resposta, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	if resposta.Code != http.StatusOK {
 		t.Fatalf("status %d, esperava %d", resposta.Code, http.StatusOK)
@@ -94,7 +94,7 @@ func TestPainelResponde(t *testing.T) {
 
 func TestSwaggerUIResponde(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := novoRouter(nil)
+	router := novoRouter(nil, nil)
 
 	casos := []struct {
 		caminho, localizacao string
@@ -122,7 +122,7 @@ func TestSwaggerUIResponde(t *testing.T) {
 // rota ou método errado também precisam responder no formato {"erro": ...}, e não no text/plain padrão do gin.
 func TestErrosDeRotaEmJSON(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	router := novoRouter(nil)
+	router := novoRouter(nil, nil)
 
 	casos := []struct {
 		metodo, caminho, erro string
@@ -168,4 +168,78 @@ func diferenca(a, b map[string]bool) []string {
 	}
 	sort.Strings(resultado)
 	return resultado
+}
+
+func chamarComOrigem(router http.Handler, metodo, caminho, origem string, extra map[string]string) *httptest.ResponseRecorder {
+	requisicao := httptest.NewRequest(metodo, caminho, nil)
+	if origem != "" {
+		requisicao.Header.Set("Origin", origem)
+	}
+	for chave, valor := range extra {
+		requisicao.Header.Set(chave, valor)
+	}
+	resposta := httptest.NewRecorder()
+	router.ServeHTTP(resposta, requisicao)
+	return resposta
+}
+
+func TestCORSLiberado(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := novoRouter(nil, []string{"*"})
+
+	// preflight de um POST com JSON, que o router recusaria com 405 sem o middleware.
+	preflight := chamarComOrigem(router, http.MethodOptions, "/operacoes", "http://192.168.0.20:3000", map[string]string{
+		"Access-Control-Request-Method":  "POST",
+		"Access-Control-Request-Headers": "content-type",
+	})
+	if preflight.Code != http.StatusNoContent {
+		t.Fatalf("preflight: status %d, esperava 204", preflight.Code)
+	}
+	cabecalhos := preflight.Header()
+	if cabecalhos.Get("Access-Control-Allow-Origin") != "*" || !strings.Contains(cabecalhos.Get("Access-Control-Allow-Methods"), "POST") ||
+		cabecalhos.Get("Access-Control-Allow-Headers") != "content-type" {
+		t.Errorf("cabeçalhos do preflight: %v", cabecalhos)
+	}
+
+	// resposta normal e erros também levam o cabeçalho, senão o navegador esconde a mensagem do erro.
+	for caminho, status := range map[string]int{"/health": http.StatusOK, "/nao-existe": http.StatusNotFound} {
+		resposta := chamarComOrigem(router, http.MethodGet, caminho, "http://192.168.0.20:3000", nil)
+		if resposta.Code != status || resposta.Header().Get("Access-Control-Allow-Origin") != "*" {
+			t.Errorf("%s: status %d, origem %q", caminho, resposta.Code, resposta.Header().Get("Access-Control-Allow-Origin"))
+		}
+		if resposta.Header().Get("Access-Control-Expose-Headers") != "Location" {
+			t.Errorf("%s: Location não exposto", caminho)
+		}
+	}
+
+	// sem Origin é uma chamada comum, sem cabeçalho de CORS.
+	if chamarComOrigem(router, http.MethodGet, "/health", "", nil).Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Error("respondeu CORS sem Origin")
+	}
+}
+
+func TestCORSRestrito(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := novoRouter(nil, []string{"http://192.168.0.20:3000", " http://localhost:5173 "})
+
+	permitida := chamarComOrigem(router, http.MethodGet, "/health", "http://localhost:5173", nil)
+	if permitida.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" || permitida.Header().Get("Vary") != "Origin" {
+		t.Errorf("origem permitida: %v", permitida.Header())
+	}
+	negada := chamarComOrigem(router, http.MethodGet, "/health", "http://outro-site.com", nil)
+	if negada.Code != http.StatusOK || negada.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Errorf("origem negada: status %d, %v", negada.Code, negada.Header())
+	}
+	preflightNegado := chamarComOrigem(router, http.MethodOptions, "/operacoes", "http://outro-site.com", map[string]string{"Access-Control-Request-Method": "POST"})
+	if preflightNegado.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Errorf("preflight negado: %v", preflightNegado.Header())
+	}
+}
+
+func TestCORSDesligado(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resposta := chamarComOrigem(novoRouter(nil, nil), http.MethodGet, "/health", "http://localhost:5173", nil)
+	if resposta.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Errorf("CORS desligado respondeu: %v", resposta.Header())
+	}
 }

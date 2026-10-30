@@ -177,6 +177,7 @@ DATABASE_URL=postgres://postgres:SUA_SENHA@localhost:5432/finops?sslmode=disable
 | --- | --- | --- | --- |
 | `DATABASE_URL` | sim | — | Conexão com o PostgreSQL |
 | `PORT` | não | `8083` | Porta HTTP da API |
+| `CORS_ORIGINS` | não | `*` | Origens que podem chamar a API pelo navegador, separadas por vírgula. `*` libera todas; `off` desliga o CORS |
 
 > O `.env` está no `.gitignore` e **nunca** deve ser commitado.
 
@@ -263,6 +264,18 @@ http://localhost:8083/
 É um arquivo só (`web/index.html`), embutido no binário, que funciona sem internet. Tem dashboard com os totais e as situações das operações, a lista com busca e filtro, o detalhe de cada operação (resumo, parcelas e histórico) e uma área para cada ação: pagar parcela, amortização antecipada, liquidação e registrar operação. A **data de referência** no topo vale para todas as consultas.
 
 Para ver o serviço de um colega, abra o painel dele pelo IP da máquina (`http://IP:8083/`). O painel usa sempre a API da máquina que o serviu, então cada pessoa vê e mexe nas operações do próprio banco.
+
+### CORS
+
+A API aceita chamadas feitas pelo navegador a partir de outra origem, como o front de outro grupo apontando para o IP da sua máquina. Por padrão o CORS vem **liberado para qualquer origem** (`CORS_ORIGINS=*`), porque cada um sobe o serviço no próprio PC e não há autenticação. O painel em `/` não depende disso: ele é servido pela própria API.
+
+Para restringir, liste as origens no `.env`:
+
+```text
+CORS_ORIGINS=http://192.168.0.20:3000,http://localhost:5173
+```
+
+`off` desliga o CORS. O preflight (`OPTIONS`) responde `204`, e o header `Location` das respostas `201` fica visível para o JavaScript.
 
 ### Swagger
 

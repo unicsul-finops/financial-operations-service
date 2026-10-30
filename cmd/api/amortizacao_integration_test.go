@@ -20,7 +20,7 @@ func chamadasDeTeste(t *testing.T, db *sql.DB) (func(metodo, caminho, corpo stri
 	anterior := decimal.MarshalJSONWithoutQuotes
 	decimal.MarshalJSONWithoutQuotes = true
 	t.Cleanup(func() { decimal.MarshalJSONWithoutQuotes = anterior })
-	router := novoRouter(handler.NovoOperacaoHandler(service.NovoOperacaoService(repository.NovoOperacaoRepository(db))))
+	router := novoRouter(handler.NovoOperacaoHandler(service.NovoOperacaoService(repository.NovoOperacaoRepository(db))), nil)
 	chamar := func(metodo, caminho, corpo string) *httptest.ResponseRecorder {
 		t.Helper()
 		w := httptest.NewRecorder()
