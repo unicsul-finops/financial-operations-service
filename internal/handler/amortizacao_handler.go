@@ -11,12 +11,14 @@ import (
 // corpo do POST de amortização. ponteiro e NullDecimal separam o campo ausente do campo vazio.
 type AmortizacaoRequest struct {
 	QuantidadeParcelas     decimal.NullDecimal `json:"quantidadeParcelas"`
+	Modo                   *string             `json:"modo"`
 	DataPagamento          *string             `json:"dataPagamento"`
 	IdentificadorPagamento *string             `json:"identificadorPagamento"`
 }
 
 type SimulacaoAmortizacaoResponse struct {
 	NumeroOperacao              string                     `json:"numeroOperacao"`
+	Modo                        string                     `json:"modo"`
 	DataReferencia              string                     `json:"dataReferencia"`
 	QuantidadeParcelas          int                        `json:"quantidadeParcelas"`
 	Parcelas                    []domain.ParcelaAmortizada `json:"parcelas"`
@@ -39,13 +41,17 @@ func (h *OperacaoHandler) SimularAmortizacao(c *gin.Context) {
 	if valores, presente := c.Request.URL.Query()["quantidadeParcelas"]; presente {
 		quantidade = &valores[0]
 	}
-	s, err := h.service.SimularAmortizacao(c.Param("identificador"), quantidade, dataReferenciaQuery(c))
+	var modo *string
+	if valores, presente := c.Request.URL.Query()["modo"]; presente {
+		modo = &valores[0]
+	}
+	s, err := h.service.SimularAmortizacao(c.Param("identificador"), quantidade, modo, dataReferenciaQuery(c))
 	if err != nil {
 		responderErro(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, SimulacaoAmortizacaoResponse{
-		NumeroOperacao: s.NumeroOperacao, DataReferencia: s.DataReferencia, QuantidadeParcelas: s.QuantidadeParcelas,
+		NumeroOperacao: s.NumeroOperacao, Modo: s.Modo, DataReferencia: s.DataReferencia, QuantidadeParcelas: s.QuantidadeParcelas,
 		Parcelas: s.Parcelas, Totais: s.Totais, SaldoDevedorAntes: s.SaldoDevedorAntes, SaldoDevedorApos: s.SaldoDevedorApos,
 		QuantidadeParcelasRestantes: s.QuantidadeParcelasRestantes,
 	})
@@ -60,6 +66,7 @@ func (h *OperacaoHandler) RegistrarAmortizacao(c *gin.Context) {
 	}
 	amortizacao, novo, err := h.service.RegistrarAmortizacao(c.Param("identificador"), domain.PedidoAmortizacao{
 		QuantidadeParcelas:     body.QuantidadeParcelas,
+		Modo:                   body.Modo,
 		DataPagamento:          body.DataPagamento,
 		IdentificadorPagamento: body.IdentificadorPagamento,
 	})
