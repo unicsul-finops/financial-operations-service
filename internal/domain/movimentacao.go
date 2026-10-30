@@ -57,6 +57,8 @@ type NovoEvento struct {
 	Liquidar       bool
 	// RN-19: o pagamento da última parcela grava também um evento LIQUIDACAO sem valor.
 	EventoEncerramento bool
+	// RN-17: parcelas que continuam em aberto com a repartição entre juros e amortização refeita.
+	ParcelasRecalculadas []ParcelaRecalculada
 }
 
 type EventoGravado struct {
@@ -158,4 +160,75 @@ type PedidoMovimentacao struct {
 	DataPagamento          *string
 	IdentificadorPagamento *string
 	Origem                 *string
+}
+
+const EventoAmortizacao = "AMORTIZACAO_ANTECIPADA"
+
+// uma parcela antecipada. valorPresente = amortizacao + juros e desconto = valorParcela − valorPresente (RN-16 e RN-17).
+type ParcelaAmortizada struct {
+	Numero        int             `json:"numero"`
+	Vencimento    string          `json:"vencimento"`
+	ValorParcela  decimal.Decimal `json:"valorParcela"`
+	ValorPresente decimal.Decimal `json:"valorPresente"`
+	Desconto      decimal.Decimal `json:"desconto"`
+	Amortizacao   decimal.Decimal `json:"amortizacao"`
+	Juros         decimal.Decimal `json:"juros"`
+}
+
+type TotaisAmortizacao struct {
+	ValorParcelas decimal.Decimal `json:"valorParcelas"`
+	Desconto      decimal.Decimal `json:"desconto"`
+	ValorPresente decimal.Decimal `json:"valorPresente"`
+	Amortizacao   decimal.Decimal `json:"amortizacao"`
+	Juros         decimal.Decimal `json:"juros"`
+	ValorAPagar   decimal.Decimal `json:"valorAPagar"`
+}
+
+// repartição de uma parcela que continua em aberto, antes e depois da antecipação (RN-17).
+type ReparticaoParcela struct {
+	Juros        decimal.Decimal `json:"juros"`
+	Amortizacao  decimal.Decimal `json:"amortizacao"`
+	SaldoDevedor decimal.Decimal `json:"saldoDevedor"`
+}
+
+type ParcelaRecalculada struct {
+	Numero int               `json:"numero"`
+	Antes  ReparticaoParcela `json:"antes"`
+	Depois ReparticaoParcela `json:"depois"`
+}
+
+// resultado da simulação e, gravado no evento, da amortização. a simulação e o registro usam a mesma conta.
+type SimulacaoAmortizacao struct {
+	NumeroOperacao              string
+	DataReferencia              string
+	QuantidadeParcelas          int
+	Parcelas                    []ParcelaAmortizada
+	Totais                      TotaisAmortizacao
+	SaldoDevedorAntes           decimal.Decimal
+	SaldoDevedorApos            decimal.Decimal
+	QuantidadeParcelasRestantes int
+	Recalculadas                []ParcelaRecalculada
+}
+
+// detalhe gravado do evento AMORTIZACAO_ANTECIPADA. id e registradoEm vêm das colunas do evento.
+type Amortizacao struct {
+	ID                          int64               `json:"-"`
+	NumeroOperacao              string              `json:"numeroOperacao"`
+	IdentificadorPagamento      string              `json:"identificadorPagamento,omitempty"`
+	DataPagamento               string              `json:"dataPagamento"`
+	QuantidadeParcelas          int                 `json:"quantidadeParcelas"`
+	Lancamentos                 []ParcelaAmortizada `json:"lancamentos"`
+	Totais                      TotaisAmortizacao   `json:"totais"`
+	SaldoDevedorAntes           decimal.Decimal     `json:"saldoDevedorAntes"`
+	SaldoDevedorApos            decimal.Decimal     `json:"saldoDevedorApos"`
+	QuantidadeParcelasRestantes int                 `json:"quantidadeParcelasRestantes"`
+	// só no histórico: como a tabela das parcelas que sobraram ficou depois da antecipação.
+	ParcelasRecalculadas []ParcelaRecalculada `json:"parcelasRecalculadas,omitempty"`
+}
+
+// corpo do POST de amortização. ponteiro e NullDecimal separam o campo ausente do campo vazio.
+type PedidoAmortizacao struct {
+	QuantidadeParcelas     decimal.NullDecimal
+	DataPagamento          *string
+	IdentificadorPagamento *string
 }

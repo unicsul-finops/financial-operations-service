@@ -60,6 +60,8 @@ func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 	router.GET("/operacoes/:identificador", operacaoHandler.Buscar)
 	router.GET("/operacoes/:identificador/parcelas", operacaoHandler.ListarParcelas)
 	router.POST("/operacoes/:identificador/parcelas/:numero/pagamentos", operacaoHandler.PagarParcela)
+	router.GET("/operacoes/:identificador/amortizacoes/simulacao", operacaoHandler.SimularAmortizacao)
+	router.POST("/operacoes/:identificador/amortizacoes", operacaoHandler.RegistrarAmortizacao)
 	router.GET("/operacoes/:identificador/liquidacao", operacaoHandler.ConsultarLiquidacao)
 	router.POST("/operacoes/:identificador/liquidacao", operacaoHandler.Liquidar)
 

@@ -42,6 +42,13 @@ func gravar(c *domain.Carteira, e domain.NovoEvento) {
 			c.Parcelas[i].Status = status
 		}
 	}
+	for _, r := range e.ParcelasRecalculadas {
+		for i := range c.Parcelas {
+			if c.Parcelas[i].Numero == r.Numero {
+				c.Parcelas[i].Juros, c.Parcelas[i].Amortizacao, c.Parcelas[i].SaldoDevedor = r.Depois.Juros, r.Depois.Amortizacao, r.Depois.SaldoDevedor
+			}
+		}
+	}
 	c.Operacao.SaldoDevedor = e.SaldoDevedor
 	if e.Liquidar {
 		c.Operacao.Status = domain.StatusOperacaoLiquidada
