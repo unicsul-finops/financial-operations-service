@@ -102,6 +102,7 @@ type OperacaoResponse struct {
 	ClienteID            string                       `json:"clienteId"`
 	TipoPessoa           string                       `json:"tipoPessoa"`
 	Status               string                       `json:"status"`
+	DiasEmAtraso         int                          `json:"diasEmAtraso"`
 	DefinidoEm           string                       `json:"definidoEm"`
 	DataLiberacao        string                       `json:"dataLiberacao"`
 	SaldoDevedor         decimal.Decimal              `json:"saldoDevedor"`
@@ -200,9 +201,9 @@ func (h *OperacaoHandler) Criar(c *gin.Context) {
 	c.JSON(http.StatusCreated, resposta)
 }
 
-// GET /operacoes - lista as operações, sem as parcelas pra não pesar a resposta.
+// GET /operacoes - lista as operações, sem as parcelas pra não pesar a resposta. o status é calculado na dataReferencia.
 func (h *OperacaoHandler) Listar(c *gin.Context) {
-	operacoes, err := h.service.ListarOperacoes()
+	operacoes, err := h.service.ListarOperacoes(dataReferenciaQuery(c))
 	if err != nil {
 		responderErro(c, err)
 		return
@@ -309,6 +310,7 @@ func paraOperacaoResponse(operacao domain.Operacao) OperacaoResponse {
 		ClienteID:      operacao.ClienteID,
 		TipoPessoa:     operacao.TipoPessoa,
 		Status:         operacao.Status,
+		DiasEmAtraso:   operacao.DiasEmAtraso,
 		DefinidoEm:     operacao.DefinidoEm,
 		DataLiberacao:  operacao.DataLiberacao,
 		SaldoDevedor:   operacao.SaldoDevedor,

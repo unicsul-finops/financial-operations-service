@@ -55,6 +55,8 @@ type Operacao struct {
 	CETMensal          decimal.Decimal
 	CETAnual           decimal.Decimal
 	CriadoEm           string
+	// calculado na consulta, para a dataReferencia: o maior atraso entre as parcelas em aberto (RN-10).
+	DiasEmAtraso int
 }
 
 // operação como chega do serviço de juros. as taxas vêm em percentual e o service preenche os campos derivados.

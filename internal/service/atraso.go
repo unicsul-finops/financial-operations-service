@@ -19,6 +19,42 @@ func interpretarDataReferencia(valor *string, agora time.Time) (time.Time, error
 	return data, nil
 }
 
+func calcularSituacaoParcelas(parcelas []domain.Parcela, referencia time.Time) ([]domain.Parcela, error) {
+	calculadas := make([]domain.Parcela, 0, len(parcelas))
+	for _, parcela := range parcelas {
+		calculada, err := calcularSituacaoParcela(parcela, referencia)
+		if err != nil {
+			return nil, err
+		}
+		calculadas = append(calculadas, calculada)
+	}
+	return calculadas, nil
+}
+
+// RN-12: inadimplente com mais de 90 dias de atraso.
+const limiteInadimplencia = 90
+
+// RN-11 e RN-12: o status de atraso é calculado na consulta e nunca gravado. LIQUIDADA continua LIQUIDADA.
+// as parcelas já vêm com a situação calculada para a mesma data.
+func calcularSituacaoOperacao(operacao domain.Operacao, parcelas []domain.Parcela) domain.Operacao {
+	operacao.DiasEmAtraso = 0
+	for _, parcela := range parcelas {
+		if parcela.DiasEmAtraso > operacao.DiasEmAtraso {
+			operacao.DiasEmAtraso = parcela.DiasEmAtraso
+		}
+	}
+	if operacao.Status != domain.StatusOperacaoAtiva {
+		return operacao
+	}
+	switch {
+	case operacao.DiasEmAtraso > limiteInadimplencia:
+		operacao.Status = domain.StatusOperacaoInadimplente
+	case operacao.DiasEmAtraso > 0:
+		operacao.Status = domain.StatusOperacaoEmAtraso
+	}
+	return operacao
+}
+
 // recebe e devolve cópias: a situação consultada nunca altera o estado persistido.
 func calcularSituacaoParcela(parcela domain.Parcela, referencia time.Time) (domain.Parcela, error) {
 	vencimento, err := time.ParseInLocation(time.DateOnly, parcela.Vencimento, fusoJuros)

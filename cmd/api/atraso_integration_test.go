@@ -108,6 +108,33 @@ func TestAtrasoIntegracao(t *testing.T) {
 			t.Fatalf("operação: %d %s", w.Code, w.Body)
 		}
 	}
+	// RN-12: EM_ATRASO até 90 dias, INADIMPLENTE a partir do 91º (01/03/2027), na consulta e na listagem.
+	for _, c := range []struct {
+		data, status string
+		dias         int
+	}{{"2026-12-01", "EM_ATRASO", 1}, {"2027-02-28", "EM_ATRASO", 90}, {"2027-03-01", "INADIMPLENTE", 91}} {
+		var op struct {
+			Status       string
+			DiasEmAtraso int
+		}
+		w := request("GET", base+"?dataReferencia="+c.data, nil)
+		json.Unmarshal(w.Body.Bytes(), &op)
+		if w.Code != 200 || op.Status != c.status || op.DiasEmAtraso != c.dias {
+			t.Fatalf("operação em %s: %d %s", c.data, w.Code, w.Body)
+		}
+		var lista []struct {
+			Status       string
+			DiasEmAtraso int
+		}
+		w = request("GET", "/operacoes?dataReferencia="+c.data, nil)
+		json.Unmarshal(w.Body.Bytes(), &lista)
+		if w.Code != 200 || len(lista) != 1 || lista[0].Status != c.status || lista[0].DiasEmAtraso != c.dias {
+			t.Fatalf("listagem em %s: %d %s", c.data, w.Code, w.Body)
+		}
+	}
+	if w := request("GET", "/operacoes?dataReferencia=2026-02-30", nil); w.Code != 400 || !strings.Contains(w.Body.String(), "dataReferencia deve estar no formato YYYY-MM-DD") {
+		t.Fatalf("listagem com data inválida: %d %s", w.Code, w.Body)
+	}
 	for _, path := range []string{base, base + "/parcelas"} {
 		for _, data := range []string{"", "2026-02-30", "10-12-2026"} {
 			w := request("GET", path+"?dataReferencia="+data, nil)
