@@ -12,7 +12,7 @@
   --txt:#1f4647; --txt-2:#5d7778; --verde:#9eea6c; --verde-esc:#4fa21f; --verde-bg:#eefbe5;
   --grid:#d3dce8; --hatch:#dde6ef; --wash:#f6f9f5; --paper:#fff; --navy:#173a3b;
   --erro:#c0392b; --erro-bg:#fdecea; --alerta:#b7791f; --alerta-bg:#fff6e0;
-  --content:1240px; --ease:cubic-bezier(.2,.7,.2,1);
+  --content:1440px; --ease:cubic-bezier(.2,.7,.2,1);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -35,7 +35,8 @@ td.num,td .num,dd.num{font-variant-numeric:tabular-nums}
 .rail.dark{background:var(--navy)}
 .hatch,.rail.hatch{background-color:var(--paper);background-image:repeating-linear-gradient(45deg,transparent 0,transparent 13px,var(--hatch) 13px,var(--hatch) 14px)}
 .stripe{min-height:56px;background-color:var(--paper);background-image:repeating-linear-gradient(45deg,transparent 0,transparent 14px,var(--hatch) 14px,var(--hatch) 15px)}
-.sub-grid{display:grid;gap:1px;background:var(--grid);position:relative;--raio:44px;min-width:0}
+.sub-grid{display:grid;gap:1px;background:var(--grid);position:relative;--raio:28px;min-width:0}
+.sub-grid.fino{--raio:14px}
 .sub-grid.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .sub-grid.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sub-grid.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -211,7 +212,8 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 .modal .kv{margin:0 0 22px}
 
 /* ============ rodapé ============ */
-.rodape{display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;padding:34px 44px;color:#a9c4c0;background:var(--navy)}
+.rodape{background:var(--navy);color:#a9c4c0}
+.rodape .in{max-width:var(--content);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;padding:38px 44px}
 .rodape strong{color:#fff;font-size:14px}
 .rodape p{margin:0;font-size:12.5px}
 
@@ -231,7 +233,8 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 
 @media (max-width:980px){
   .page-grid{grid-template-columns:24px minmax(0,1fr) 24px}
-  .sub-grid{--raio:30px}
+  .sub-grid{--raio:22px}
+  .sub-grid.fino{--raio:12px}
   .sub-grid.c4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sub-grid.c3{grid-template-columns:repeat(2,minmax(0,1fr))}
   .topo .cabeca{padding:14px 22px;flex-wrap:wrap}
@@ -242,7 +245,8 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 }
 @media (max-width:680px){
   .page-grid{grid-template-columns:14px minmax(0,1fr) 14px}
-  .sub-grid{--raio:22px}
+  .sub-grid{--raio:16px}
+  .sub-grid.fino{--raio:10px}
   .sub-grid.c2,.sub-grid.c3,.sub-grid.c4{grid-template-columns:minmax(0,1fr)}
   .kc.s2{grid-column:auto}
   .logo svg{height:48px}
@@ -251,7 +255,7 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
   .pg-titulo{padding:36px 20px 32px}.corpo{padding:28px 20px}.kc{padding:26px 20px}
   .barra{grid-template-columns:100px 1fr 28px}
   .abas{padding:0 14px;overflow-x:auto}
-  .rodape{padding:26px 20px}
+  .rodape .in{padding:28px 20px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
 </style>
@@ -289,6 +293,7 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 </header>
 
 <main><div class="page-grid" id="app"></div></main>
+<footer class="rodape"><div class="in"><strong>finops · Operações</strong><p>Fase 2 · serviço em <span id="hostRodape"></span></p></div></footer>
 <div id="camada"></div>
 
 <script>
@@ -368,7 +373,6 @@ const linha = (conteudo, tipo = 'wash') => `${trilho(tipo)}${conteudo}${trilho(t
 const celula = (html, cls = '') => `<section class="cell ${cls}">${html}</section>`;
 const subgrade = (html, cls = 'c2') => `<div class="sub-grid ${cls}">${html}</div>`;
 const faixa = () => `${trilho('paper')}<div class="cell stripe" aria-hidden="true"></div>${trilho('paper')}`;
-const rodape = () => `${trilho('dark')}<footer class="cell rodape"><strong>finops · Operações</strong><p>Fase 2 · serviço em <span id="hostRodape">${esc(location.host)}</span></p></footer>${trilho('dark')}`;
 
 // só a quina que aponta para o centro de um cruzamento é arredondada (a ilusão do index2.html).
 // usa offset* porque o reveal move os blocos com transform.
@@ -524,7 +528,7 @@ const kpi = (icone, rotulo, valor, sub, etiqueta, cls = '') => kc(`<div class="k
 
 function montar(html, depois) {
   const app = $('#app');
-  app.innerHTML = html + faixa() + rodape();
+  app.innerHTML = html + faixa();
   pronto(app);
   window.scrollTo({ top: 0 });
   if (depois) depois(app);
@@ -654,7 +658,7 @@ function vistaResumo(r, op) {
     + mini('saldo', 'Saldo devedor', r.saldoDevedor) + mini('carteira', 'Contratado', r.totalContratado, 'liberado ' + R$(op.valorLiberado))
     + mini('pago', 'Total pago', r.totalPago, `amortizado ${R$(r.valorAmortizado)}`) + mini('tag', 'Juros pagos', r.jurosPagos)
     + mini('alerta', 'Encargos pagos', r.encargosPagos, 'multa + mora') + mini('relogio', 'Vencido', r.valorVencido, `+ ${R$(r.encargosEmAberto)} de encargos`)
-    + mini('calendario2', 'Previsto no calendário', r.totalPrevisto, 'soma das parcelas originais', 's2') + mini('desconto', 'Desconto concedido', r.descontoAntecipacao, 'em antecipações', 's2'), 'c4'));
+    + mini('calendario2', 'Previsto no calendário', r.totalPrevisto, 'soma das parcelas originais', 's2') + mini('desconto', 'Desconto concedido', r.descontoAntecipacao, 'em antecipações', 's2'), 'c4 fino'));
 }
 
 function vistaParcelas(ps, numOp) {
@@ -840,7 +844,7 @@ telas.liquidar = async (meu) => {
           + kc(`<div><div class="rotulo">${ic('desconto')} Desconto</div><div class="grande num">${R$(v.aVencer.desconto)}</div><div class="sub">sobre ${R$(v.aVencer.valorNominal)} a vencer</div></div>`)
           + kc(`<div><div class="rotulo">${ic('alerta')} Vencidas (${v.vencidas.parcelas.length})</div><div class="grande num">${R$(v.vencidas.total)}</div><div class="sub">com multa e mora</div></div>`)
           + kc(`<div><div class="rotulo">${ic('calendario2')} A vencer (${v.aVencer.parcelas.length}) pelo valor presente</div><div class="grande num">${R$(v.aVencer.valorPresente)}</div><div class="sub">principal ${R$(v.aVencer.amortizacao)} + juros ${R$(v.aVencer.juros)}</div></div>`, 's2')
-          + kc(`<div class="acoes"><button class="btn primario" type="button" id="quitar">${ic('liquidar')} Quitar operação</button></div>`, 's2 hatch'), 'c4')) + faixa());
+          + kc(`<div class="acoes"><button class="btn primario" type="button" id="quitar">${ic('liquidar')} Quitar operação</button></div>`, 's2 hatch'), 'c4 fino')) + faixa());
         $('#quitar', app).onclick = async () => {
           if (!(await confirmar({ titulo: 'Quitar a operação?', texto: 'Todas as parcelas ficam pagas e a operação é liquidada. Não pode ser desfeito.', linhas: [['Operação', op], ['Valor', R$(v.valorParaQuitar)], ['Data', dataBR(data)]], ok: 'Quitar' }))) return;
           try {
@@ -885,6 +889,7 @@ telas.registrar = async () => {
 const NAV = [['', 'Dashboard', 'dashboard'], ['operacoes', 'Operações', 'operacoes'], ['pagar', 'Pagar', 'pagar'], ['amortizar', 'Amortização', 'amortizar'], ['liquidar', 'Liquidação', 'liquidar'], ['registrar', 'Registrar', 'registrar']];
 $('#nav').innerHTML = NAV.map(([r, t, i]) => `<a href="#/${r}" data-r="${r}">${ic(i)} ${t}</a>`).join('');
 $('.ico-ref').innerHTML = ic('calendario');
+$('#hostRodape').textContent = location.host;
 
 function rotear() {
   const [caminho] = location.hash.replace(/^#\/?/, '').split('?');
