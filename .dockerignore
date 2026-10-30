@@ -1,0 +1,14 @@
+# fora da imagem: segredo local, histórico do git e o que a compilação não usa.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+bruno
+examples
+collections
+docs
+*.md
+*.exe
+*.tar

@@ -140,6 +140,8 @@ financial-operations-service/
 ├── migrations/               # schema do banco, aplicado em ordem
 ├── collections/              # coleção de testes (Postman e Bruno)
 ├── docs/                     # arquitetura, contratos, requisitos, guias e as imagens do README (docs/assets)
+├── Dockerfile                # imagem da API (para quem não tem Go, ver ADR-013)
+├── docker-compose.yml        # sobe a API e o PostgreSQL juntos
 ├── .env.example              # modelo de configuração
 └── go.mod
 ```
@@ -279,6 +281,41 @@ go build -o bin/api.exe ./cmd/api
 ```
 
 ---
+
+### Executar com container (sem Go e sem PostgreSQL)
+
+Para uma máquina em que não dá para instalar o Go, como a do professor, a API e o banco sobem juntos num container ([ADR-013](docs/architecture/adr/ADR-013-container-para-entrega.md)). Só é preciso o Docker com o Compose. Na raiz do projeto:
+
+```powershell
+docker compose up -d --build
+```
+
+Na primeira vez a imagem é compilada e o PostgreSQL aplica as migrations sozinho. Depois é só abrir:
+
+```text
+http://localhost:8083/          painel
+http://localhost:8083/swagger   documentação interativa
+http://localhost:8083/health    verificação rápida
+```
+
+| Comando | O que faz |
+| --- | --- |
+| `docker compose ps` | Mostra os serviços e se estão saudáveis (`healthy`) |
+| `docker compose logs -f api` | Acompanha o log da API |
+| `docker compose down` | Para tudo e mantém os dados |
+| `docker compose down -v` | Para tudo e **apaga o banco**; na próxima subida as migrations rodam do zero |
+
+Configuração opcional, num arquivo `.env` ao lado do `docker-compose.yml` ou nas variáveis do terminal:
+
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| `API_PORT` | `8083` | Porta publicada na máquina |
+| `POSTGRES_PASSWORD` | `finops` | Senha do banco; só a API é publicada, o banco não |
+| `CORS_ORIGINS` | `*` | Origens aceitas pelo CORS |
+
+> As migrations só rodam com o volume do banco vazio. Se uma migration nova for adicionada, use `docker compose down -v` para recriar o banco.
+
+**Sem internet na máquina de destino:** numa máquina com internet, rode `docker compose build` e `docker compose pull db`, depois `docker save -o finops.tar finops-api:latest postgres:18-alpine`. Leve o `finops.tar` junto com `docker-compose.yml` e a pasta `migrations/`, e na máquina de destino rode `docker load -i finops.tar` e `docker compose up -d`.
 
 ## 6. Verificar
 
