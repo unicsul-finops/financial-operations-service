@@ -64,6 +64,7 @@ func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 	router.POST("/operacoes/:identificador/amortizacoes", operacaoHandler.RegistrarAmortizacao)
 	router.GET("/operacoes/:identificador/liquidacao", operacaoHandler.ConsultarLiquidacao)
 	router.POST("/operacoes/:identificador/liquidacao", operacaoHandler.Liquidar)
+	router.GET("/operacoes/:identificador/resumo", operacaoHandler.ConsultarResumo)
 
 	router.GET("/openapi.yaml", handler.OpenAPI)
 	router.GET("/swagger", func(c *gin.Context) {

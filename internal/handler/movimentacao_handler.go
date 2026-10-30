@@ -148,3 +148,13 @@ func paraPedido(body MovimentacaoRequest) domain.PedidoMovimentacao {
 		Origem:                 body.Origem,
 	}
 }
+
+// GET /operacoes/:identificador/resumo - totais da operação na dataReferencia (RN-20).
+func (h *OperacaoHandler) ConsultarResumo(c *gin.Context) {
+	resumo, err := h.service.ConsultarResumo(c.Param("identificador"), dataReferenciaQuery(c))
+	if err != nil {
+		responderErro(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, resumo)
+}

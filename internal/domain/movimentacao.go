@@ -33,6 +33,8 @@ type Carteira struct {
 	Parcelas           []Parcela
 	Lancamentos        []LancamentoParcela
 	UltimaMovimentacao string
+	// lançamentos da operação, sem parcela: as parcelas a vencer na liquidação (RN-18). só entram no resumo.
+	LancamentoOperacao LancamentoParcela
 }
 
 // NumeroParcela zero é o lançamento da operação, sem parcela, das parcelas a vencer na liquidação (RN-18).
@@ -231,4 +233,23 @@ type PedidoAmortizacao struct {
 	QuantidadeParcelas     decimal.NullDecimal
 	DataPagamento          *string
 	IdentificadorPagamento *string
+}
+
+// resumo financeiro da operação na dataReferencia (RN-20). totalPago = valorAmortizado + jurosPagos + encargosPagos.
+type Resumo struct {
+	NumeroOperacao      string          `json:"numeroOperacao"`
+	DataReferencia      string          `json:"dataReferencia"`
+	Status              string          `json:"status"`
+	DiasEmAtraso        int             `json:"diasEmAtraso"`
+	TotalContratado     decimal.Decimal `json:"totalContratado"`
+	TotalPrevisto       decimal.Decimal `json:"totalPrevisto"`
+	TotalPago           decimal.Decimal `json:"totalPago"`
+	ValorAmortizado     decimal.Decimal `json:"valorAmortizado"`
+	JurosPagos          decimal.Decimal `json:"jurosPagos"`
+	EncargosPagos       decimal.Decimal `json:"encargosPagos"`
+	DescontoAntecipacao decimal.Decimal `json:"descontoAntecipacao"`
+	ValorVencido        decimal.Decimal `json:"valorVencido"`
+	EncargosEmAberto    decimal.Decimal `json:"encargosEmAberto"`
+	SaldoDevedor        decimal.Decimal `json:"saldoDevedor"`
+	ValorParaQuitar     decimal.Decimal `json:"valorParaQuitar"`
 }

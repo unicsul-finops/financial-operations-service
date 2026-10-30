@@ -2574,17 +2574,5 @@
       "value": "",
       "type": "string"
     }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8083",
-      "type": "string"
-    },
-    {
-      "key": "operacaoId",
-      "value": "",
-      "type": "string"
-    }
   ]
 }
