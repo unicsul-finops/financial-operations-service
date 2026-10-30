@@ -21,12 +21,16 @@ type RepositorioOperacoes interface {
 }
 
 type OperacaoService struct {
-	repo  RepositorioOperacoes
-	agora func() time.Time
+	repo          RepositorioOperacoes
+	movimentacoes RepositorioMovimentacoes
+	agora         func() time.Time
 }
 
 func NovoOperacaoService(repo RepositorioOperacoes) *OperacaoService {
-	return &OperacaoService{repo: repo, agora: time.Now}
+	s := &OperacaoService{repo: repo, agora: time.Now}
+	// o repositório de verdade também grava pagamentos; os dublês dos testes de consulta não precisam.
+	s.movimentacoes, _ = repo.(RepositorioMovimentacoes)
+	return s
 }
 
 // devolve true quando a operação foi criada agora e false quando o identificador já existia (reenvio do juros).

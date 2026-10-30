@@ -7,3 +7,6 @@ var ErrOperacaoNaoEncontrada = errors.New("operação não encontrada")
 
 // dois envios simultâneos do mesmo identificador: o segundo bate na constraint UNIQUE e o service devolve a operação já gravada.
 var ErrOperacaoJaRegistrada = errors.New("operação já registrada")
+
+// o pagamento é por parcela, e parcela que não existe na operação também é 404.
+var ErrParcelaNaoEncontrada = errors.New("parcela não encontrada")

@@ -249,7 +249,7 @@ func dataReferenciaQuery(c *gin.Context) *string {
 }
 
 func responderErro(c *gin.Context, err error) {
-	if errors.Is(err, domain.ErrOperacaoNaoEncontrada) {
+	if errors.Is(err, domain.ErrOperacaoNaoEncontrada) || errors.Is(err, domain.ErrParcelaNaoEncontrada) {
 		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
 		return
 	}

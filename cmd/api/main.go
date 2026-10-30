@@ -59,6 +59,9 @@ func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 	// o caminho certo é pelo identificador do juros (numeroOperacao); o id interno também é aceito.
 	router.GET("/operacoes/:identificador", operacaoHandler.Buscar)
 	router.GET("/operacoes/:identificador/parcelas", operacaoHandler.ListarParcelas)
+	router.POST("/operacoes/:identificador/parcelas/:numero/pagamentos", operacaoHandler.PagarParcela)
+	router.GET("/operacoes/:identificador/liquidacao", operacaoHandler.ConsultarLiquidacao)
+	router.POST("/operacoes/:identificador/liquidacao", operacaoHandler.Liquidar)
 
 	router.GET("/openapi.yaml", handler.OpenAPI)
 	router.GET("/swagger", func(c *gin.Context) {
