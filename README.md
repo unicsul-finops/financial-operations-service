@@ -1,14 +1,20 @@
 <div align="center">
 
+<img src="docs/assets/banner.svg" alt="finops: controle financeiro de operações" width="100%">
+
 # Controle Financeiro de Operações
 
-**Microsserviço que registra e acompanha as operações de crédito aprovadas na Esteira de Crédito.**
+**Microsserviço que registra e acompanha as operações de crédito aprovadas na Esteira de Crédito:<br>parcelas, pagamentos, atrasos, amortização e liquidação.**
 
-![Status](https://img.shields.io/badge/status-fase%201%20conclu%C3%ADda-16a34a?style=for-the-badge)
+![Status](https://img.shields.io/badge/status-fase%202%20conclu%C3%ADda-16a34a?style=for-the-badge)
 ![Go](https://img.shields.io/badge/go-1.26-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![OpenAPI](https://img.shields.io/badge/openapi-3.0-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Projeto acadêmico](https://img.shields.io/badge/projeto-acad%C3%AAmico-2563eb?style=for-the-badge)
 ![Conventional Commits](https://img.shields.io/badge/commits-conventional-f97316?style=for-the-badge)
+
+[Veja funcionando](#veja-funcionando) · [Começo rápido](#começo-rápido) · [Endpoints](#7-endpoints) · [Contratos](docs/architecture/contracts/README.md) · [Regras de negócio](docs/requirements/regras-de-negocio-fase-2.md) · [Decisões](docs/architecture/adr/README.md)
 
 </div>
 
@@ -34,13 +40,76 @@ PostgreSQL (finops)
 
 ### O que já funciona
 
-- Recebe a operação do serviço de juros, com produto, taxas, encargos, CET e o calendário de parcelas (**PRICE** ou **SAC**).
-- Confere se o calendário fecha ao centavo e grava como veio, sem recalcular.
-- Usa o identificador do juros como `numeroOperacao` (`OP-2026-0001`), o mesmo em toda a esteira. Reenviar a mesma operação não duplica.
-- Consulta a situação da operação e o cronograma **pelo identificador do juros** (`/operacoes/OP-2026-0001`); o id interno também é aceito.
-- Nas consultas individuais de operação e parcelas, aceita `?dataReferencia=YYYY-MM-DD` (padrão: hoje em GMT-03:00). Mostra `valorEmAberto`, `diasEmAtraso` e os status `VENCIDA`/`EM_ATRASO` calculados, sem gravar o atraso. Uma referência anterior à última movimentação financeira é recusada.
+| Área | O que faz | Regras |
+| --- | --- | --- |
+| **Registro** | Recebe a operação do serviço de juros, com produto, taxas, encargos, CET e o calendário (**PRICE** ou **SAC**). Confere se o calendário fecha ao centavo e grava como veio. Reenviar o mesmo identificador não duplica. | [ADR-009](docs/architecture/adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md) |
+| **Situação** | `ATIVA`, `EM_ATRASO` (1 a 90 dias) e `INADIMPLENTE` (a partir do 91º dia), sempre **calculados** para uma `dataReferencia`, sem gravar o atraso. | RN-09 a RN-12 |
+| **Encargos** | Multa de 2% e juros de mora de 1% ao mês pro rata die, com o total para quitar de cada parcela. | RN-13 |
+| **Pagamento** | Por parcela, parcial ou total, na ordem multa, mora, juros e amortização. Reenvio seguro pelo `identificadorPagamento`. | RN-14, RN-15 |
+| **Amortização** | Antecipa parcelas pelo valor presente, as **últimas** (reduz o prazo) ou as **próximas** a vencer (menos desconto), com simulação antes de gravar. | RN-16, RN-17 |
+| **Liquidação** | Valor para quitar a operação inteira numa data e quitação pelo valor exato. | RN-18, RN-19 |
+| **Resumo e histórico** | Totais da operação e linha do tempo de eventos gravados, com atraso e inadimplência calculados. | RN-20, RN-21 |
+| **Painel web** | Dashboard, lista, detalhe e uma área para cada ação, num HTML só embutido na API. | [Painel](#painel) |
+| **Integração** | CORS liberado para fronts de outras origens e container para rodar sem Go. | [CORS](#cors) · [Container](#executar-com-container-sem-go-e-sem-postgresql) |
 
-O roadmap completo, com as fases seguintes, está em [Requisitos](docs/requirements/README.md).
+O dinheiro é sempre decimal exato (`NUMERIC` no banco e `shopspring/decimal` no Go), nunca ponto flutuante. O roadmap completo está em [Requisitos](docs/requirements/README.md).
+
+## Veja funcionando
+
+O painel vem embutido na API: suba o serviço e abra `http://localhost:8083/`.
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/assets/tela-dashboard.png"><img src="docs/assets/tela-dashboard.png" alt="Dashboard com totais, situação das operações e maiores atrasos"></a>
+      <br><sub><b>Dashboard</b>: totais da carteira, operações por situação e os maiores atrasos</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/assets/tela-operacoes.png"><img src="docs/assets/tela-operacoes.png" alt="Lista de operações com busca e filtro por situação"></a>
+      <br><sub><b>Operações</b>: busca e filtro por situação, com atraso e saldo devedor</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/assets/tela-resumo.png"><img src="docs/assets/tela-resumo.png" alt="Resumo financeiro de uma operação"></a>
+      <br><sub><b>Resumo</b>: quanto falta para quitar, o que foi pago e como foi dividido</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/assets/tela-historico.png"><img src="docs/assets/tela-historico.png" alt="Linha do tempo de eventos da operação"></a>
+      <br><sub><b>Histórico</b>: eventos gravados e o atraso calculado na data</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/assets/tela-pagamento.png"><img src="docs/assets/tela-pagamento.png" alt="Pagamento de parcela com a distribuição do dinheiro"></a>
+      <br><sub><b>Pagamento</b>: mostra para onde foi cada centavo, multa, mora, juros e amortização</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/assets/tela-amortizacao.png"><img src="docs/assets/tela-amortizacao.png" alt="Simulação de amortização nas próximas parcelas"></a>
+      <br><sub><b>Amortização</b>: simulação nas próximas parcelas, antes de confirmar</sub>
+    </td>
+  </tr>
+</table>
+
+## Começo rápido
+
+**Com Go e PostgreSQL** (o caminho normal de desenvolvimento, detalhado nas seções 2 a 5):
+
+```powershell
+git clone https://github.com/unicsul-finops/financial-operations-service.git
+cd financial-operations-service
+copy .env.example .env      # ajuste a senha do seu PostgreSQL em DATABASE_URL
+go run ./cmd/api
+```
+
+**Só com Docker** (sem Go nem PostgreSQL, como na máquina do professor):
+
+```powershell
+docker compose up -d --build
+```
+
+Nos dois casos: painel em `http://localhost:8083/`, documentação em `http://localhost:8083/swagger`.
+
 
 ---
 
@@ -70,7 +139,7 @@ financial-operations-service/
 │   └── repository/           # SQL
 ├── migrations/               # schema do banco, aplicado em ordem
 ├── collections/              # coleção de testes (Postman e Bruno)
-├── docs/                     # arquitetura, contratos, requisitos e guias
+├── docs/                     # arquitetura, contratos, requisitos, guias e as imagens do README (docs/assets)
 ├── .env.example              # modelo de configuração
 └── go.mod
 ```
@@ -246,9 +315,16 @@ Para testar tudo de uma vez, use a coleção em [`collections/`](collections). E
 | --- | --- | --- |
 | `GET` | `/health` | Verifica se o serviço está no ar |
 | `POST` | `/operacoes` | Registra a operação definida no juros, com o calendário |
-| `GET` | `/operacoes` | Lista as operações |
+| `GET` | `/operacoes` | Lista as operações, com a situação na `dataReferencia` |
 | `GET` | `/operacoes/:identificador` | Situação da operação (`numeroOperacao`, ou o id interno) |
-| `GET` | `/operacoes/:identificador/parcelas` | Cronograma de parcelas (`numeroOperacao`, ou o id interno) |
+| `GET` | `/operacoes/:identificador/parcelas` | Cronograma de parcelas, com atraso, encargos e total para quitar |
+| `POST` | `/operacoes/:identificador/parcelas/:numero/pagamentos` | Registra o pagamento de uma parcela (RN-14) |
+| `GET` | `/operacoes/:identificador/amortizacoes/simulacao` | Simula a antecipação de parcelas (RN-16 e RN-17) |
+| `POST` | `/operacoes/:identificador/amortizacoes` | Registra a antecipação de parcelas |
+| `GET` | `/operacoes/:identificador/liquidacao` | Valor para quitar a operação na data (RN-18) |
+| `POST` | `/operacoes/:identificador/liquidacao` | Quita a operação antes do prazo |
+| `GET` | `/operacoes/:identificador/resumo` | Resumo financeiro (RN-20) |
+| `GET` | `/operacoes/:identificador/historico` | Histórico de eventos (RN-21) |
 | `GET` | `/` | Painel para acompanhar e operar as operações |
 | `GET` | `/swagger` | Documentação interativa (Swagger UI) |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 |
@@ -307,11 +383,11 @@ O contrato completo, com todas as regras de validação, respostas e mensagens d
 go test ./...
 ```
 
-Para validar a tarefa #6 contra PostgreSQL, defina `FINOPS_TEST_DATABASE_URL` com uma conexão de teste e execute `go test ./cmd/api -run TestAtrasoIntegracao -v`. O teste cria um schema temporário exclusivo, aplica as migrations e o remove ao terminar; não altera as operações existentes. O usuário precisa de permissão para criar schemas. Sem essa variável, somente esse teste é pulado; os testes unitários continuam sem banco. Não publique a URL com senha.
+Os testes de integração (atraso, pagamento, amortização, liquidação, resumo e histórico) rodam contra o PostgreSQL quando a variável `FINOPS_TEST_DATABASE_URL` aponta para uma conexão de teste, por exemplo `go test ./cmd/api -v`. Cada teste cria um schema temporário exclusivo, aplica as migrations e o remove ao terminar, sem alterar as operações existentes; o usuário precisa de permissão para criar schemas. Sem a variável, só esses testes são pulados e os unitários continuam sem banco. Não publique a URL com senha.
 
 Depois de iniciar a API, consulte `http://localhost:8083/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-10`. Sem pagamentos no exemplo PRICE, a primeira parcela deve retornar `VENCIDA`, `diasEmAtraso: 10` e `valorEmAberto: 936.91`. Em `2026-11-30`, ela permanece `PENDENTE`, com zero dias. Os pedidos da pasta `Contrato #6` na coleção exercitam esses cenários; a operação deve estar sem movimentações para reproduzir os valores do exemplo.
 
-Os testes ficam ao lado do código (`internal/service/*_test.go` e `cmd/api/main_test.go`) e cobrem a conferência do calendário recebido (ordem, vencimentos, soma das parcelas e saldo encadeado até zero, ao centavo), a conversão das taxas, a interpretação do fuso e todas as validações de entrada. Eles também validam o `openapi.yaml` (inclusive os exemplos contra os schemas), conferem se toda rota do router está documentada nele e se os erros de rota e de método saem em JSON. Nenhum teste precisa de banco.
+Os testes ficam ao lado do código (`internal/service/*_test.go` e `cmd/api/main_test.go`) e cobrem a conferência do calendário recebido (ordem, vencimentos, soma das parcelas e saldo encadeado até zero, ao centavo), a conversão das taxas, a interpretação do fuso e todas as validações de entrada. Eles também validam o `openapi.yaml` (inclusive os exemplos contra os schemas), conferem se toda rota do router está documentada nele e se os erros de rota e de método saem em JSON. Só os testes de integração precisam de banco.
 
 Para testar a API rodando, de ponta a ponta, use a coleção em `collections/` (seção 6).
 
