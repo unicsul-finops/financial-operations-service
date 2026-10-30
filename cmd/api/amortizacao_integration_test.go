@@ -81,7 +81,8 @@ func TestAmortizacaoIntegracao(t *testing.T) {
 	// a simulação não grava nada.
 	var eventos int
 	db.QueryRow(`SELECT COUNT(*) FROM evento e JOIN operacao o ON o.id = e.operacao_id WHERE o.numero_operacao = 'OP-2025-0010'`).Scan(&eventos)
-	if eventos != 2 {
+	// o registro da operação e os dois pagamentos.
+	if eventos != 3 {
 		t.Fatalf("a simulação gravou eventos: %d", eventos)
 	}
 

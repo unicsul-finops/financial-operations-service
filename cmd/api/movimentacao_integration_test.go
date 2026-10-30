@@ -106,7 +106,8 @@ func TestMovimentacaoIntegracao(t *testing.T) {
 	var totalLancado decimal.Decimal
 	db.QueryRow(`SELECT COUNT(*) FROM evento e JOIN operacao o ON o.id = e.operacao_id WHERE o.numero_operacao = 'OP-2025-0009'`).Scan(&eventos)
 	db.QueryRow(`SELECT COUNT(*), SUM(l.valor) FROM lancamento l JOIN operacao o ON o.id = l.operacao_id WHERE o.numero_operacao = 'OP-2025-0009'`).Scan(&lancamentos, &totalLancado)
-	if eventos != 2 || lancamentos != 2 || !totalLancado.Equal(decimal.RequireFromString("960.30")) {
+	// o registro da operação e os dois pagamentos.
+	if eventos != 3 || lancamentos != 2 || !totalLancado.Equal(decimal.RequireFromString("960.30")) {
 		t.Fatalf("gravou %d eventos e %d lançamentos somando %s", eventos, lancamentos, totalLancado)
 	}
 
