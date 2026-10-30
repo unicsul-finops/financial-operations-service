@@ -111,6 +111,27 @@ func (r *repositorioConsultaTeste) ConsultarSituacao(id int64, numero string) (d
 	return r.operacao, r.parcelas, r.ultimaData, r.err
 }
 
+func TestSituacaoOperacao(t *testing.T) {
+	for _, c := range []struct {
+		nome, gravado, status string
+		dias, esperado        int
+	}{
+		{"em dia", "ATIVA", "ATIVA", 0, 0},
+		{"primeiro dia", "ATIVA", "EM_ATRASO", 1, 1},
+		{"90 dias", "ATIVA", "EM_ATRASO", 90, 90},
+		{"91 dias", "ATIVA", "INADIMPLENTE", 91, 91},
+		{"liquidada", "LIQUIDADA", "LIQUIDADA", 0, 0},
+	} {
+		t.Run(c.nome, func(t *testing.T) {
+			parcelas := []domain.Parcela{{DiasEmAtraso: 0}, {DiasEmAtraso: c.dias}, {DiasEmAtraso: c.dias / 2}}
+			op := calcularSituacaoOperacao(domain.Operacao{Status: c.gravado}, parcelas)
+			if op.Status != c.status || op.DiasEmAtraso != c.esperado {
+				t.Fatalf("%s com %d dias", op.Status, op.DiasEmAtraso)
+			}
+		})
+	}
+}
+
 func TestConsultasSituacao(t *testing.T) {
 	r := &repositorioConsultaTeste{operacao: domain.Operacao{Status: "ATIVA"}, parcelas: []domain.Parcela{parcelaExemplo()}}
 	s := NovoOperacaoService(r)

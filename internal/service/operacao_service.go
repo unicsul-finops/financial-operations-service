@@ -62,8 +62,28 @@ func (s *OperacaoService) CriarOperacao(nova domain.NovaOperacao) (domain.Operac
 	return operacao, true, nil
 }
 
-func (s *OperacaoService) ListarOperacoes() ([]domain.Operacao, error) {
-	return s.repo.Listar()
+// cada operação é calculada para a mesma dataReferencia, com as regras da consulta individual (RN-11 e RN-12).
+func (s *OperacaoService) ListarOperacoes(referencia *string) ([]domain.Operacao, error) {
+	data, err := interpretarDataReferencia(referencia, s.agora())
+	if err != nil {
+		return nil, err
+	}
+	operacoes, err := s.repo.Listar()
+	if err != nil {
+		return nil, err
+	}
+	for i, operacao := range operacoes {
+		_, parcelas, _, err := s.repo.ConsultarSituacao(operacao.ID, "")
+		if err != nil {
+			return nil, err
+		}
+		calculadas, err := calcularSituacaoParcelas(parcelas, data)
+		if err != nil {
+			return nil, err
+		}
+		operacoes[i] = calcularSituacaoOperacao(operacao, calculadas)
+	}
+	return operacoes, nil
 }
 
 // operação e parcelas usam a mesma regra e o mesmo retrato dos dados financeiros.
@@ -93,18 +113,11 @@ func (s *OperacaoService) consultarSituacao(identificador string, referencia *st
 	if ultimaData != "" && data.Format(time.DateOnly) < ultimaData {
 		return domain.Operacao{}, nil, errors.New("dataReferencia não pode ser anterior à data da última movimentação financeira da operação")
 	}
-	calculadas := make([]domain.Parcela, 0, len(parcelas))
-	for _, parcela := range parcelas {
-		calculada, err := calcularSituacaoParcela(parcela, data)
-		if err != nil {
-			return domain.Operacao{}, nil, err
-		}
-		calculadas = append(calculadas, calculada)
-		if operacao.Status == domain.StatusOperacaoAtiva && calculada.Status == domain.StatusParcelaVencida {
-			operacao.Status = domain.StatusOperacaoEmAtraso
-		}
+	calculadas, err := calcularSituacaoParcelas(parcelas, data)
+	if err != nil {
+		return domain.Operacao{}, nil, err
 	}
-	return operacao, calculadas, nil
+	return calcularSituacaoOperacao(operacao, calculadas), calculadas, nil
 }
 
 // descobre pelo formato se veio o id ou o numeroOperacao. quando é o número, devolve ele e o id fica zero.
