@@ -170,7 +170,9 @@ VP = valor da parcela / (1 + i) ^ (k − f)
 
 `POST /operacoes/{identificador}/amortizacoes` com `quantidadeParcelas` e `dataPagamento`.
 
-- Quita as **últimas N parcelas** do calendário, cada uma pelo seu valor presente (RN-16). O cliente **reduz o prazo**, e as parcelas que sobram continuam com o mesmo valor e o mesmo vencimento.
+- Quita **N parcelas** do calendário, cada uma pelo seu valor presente (RN-16). O `modo` escolhe quais:
+  - `ULTIMAS` (padrão): as **últimas N**. O cliente **reduz o prazo**, e as parcelas que sobram continuam com o mesmo valor e o mesmo vencimento.
+  - `PROXIMAS`: as **primeiras N em aberto**. Estão perto do vencimento, então o desconto é bem menor e a antecipação é mais vantajosa para o negócio. As parcelas que sobram também mantêm valor e vencimento; a primeira delas só vence depois dos períodos das quitadas, e o juros dela é o de todos esses períodos sobre o saldo (`saldo × ((1 + i)^períodos − 1)`).
 - **Só sem atraso:** se houver parcela vencida, o pedido é recusado (`400`) e o atraso precisa ser pago antes. Isso evita misturar desconto com encargos.
 - **Sem parcela paga em parte:** se alguma parcela estiver `PARCIALMENTE_PAGA`, o pedido é recusado (`400`) e ela precisa ser quitada antes. A repartição recalculada (abaixo) não teria como respeitar o que já foi pago dela.
 - Não pode quitar todas as parcelas. Para isso existe a liquidação (RN-18).

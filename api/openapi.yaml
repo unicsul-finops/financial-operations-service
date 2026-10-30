@@ -446,9 +446,9 @@ paths:
   /operacoes/{identificador}/amortizacoes/simulacao:
     get:
       tags: [Operações]
-      summary: Simula a antecipação das últimas parcelas
+      summary: Simula a antecipação de parcelas
       description: |
-        Calcula, sem gravar nada, quanto custa antecipar as **últimas** `quantidadeParcelas` parcelas em aberto na `dataReferencia` (RN-16 e RN-17).
+        Calcula, sem gravar nada, quanto custa antecipar `quantidadeParcelas` parcelas em aberto na `dataReferencia` (RN-16 e RN-17). O `modo` escolhe quais: as **últimas** (`ULTIMAS`, o padrão, que reduz o prazo e dá mais desconto) ou as **próximas** a vencer (`PROXIMAS`, com bem menos desconto).
 
         Cada parcela entra pelo valor presente, `valorParcela / (1 + i) ^ (k − f)`, em que `i` é a taxa mensal do contrato, `k` é a posição da parcela entre as que ainda vão vencer e `f` é a fração já decorrida do período atual. No meio de um período, o valor presente se divide em `amortizacao` (parte de principal) e `juros` (juros pro rata do período em curso); no dia de um vencimento, `juros` é `0`. A parcela que vence na própria `dataReferencia` entra pelo valor em aberto, sem desconto. O `desconto` é `valorParcela − valorPresente`. A diferença de centavos do arredondamento fica na última parcela da lista.
 
@@ -459,11 +459,18 @@ paths:
         - name: quantidadeParcelas
           in: query
           required: true
-          description: Quantas das últimas parcelas em aberto antecipar. Maior que zero e menor que o total de parcelas em aberto.
+          description: Quantas parcelas em aberto antecipar. Maior que zero e menor que o total de parcelas em aberto.
           schema:
             type: integer
             minimum: 1
           example: 2
+        - name: modo
+          in: query
+          required: false
+          description: Quais parcelas antecipar. `ULTIMAS` (padrão) quita as últimas e reduz o prazo; `PROXIMAS` quita as primeiras em aberto, com menos desconto. Aceita minúsculas.
+          schema:
+            $ref: "#/components/schemas/ModoAmortizacao"
+          example: PROXIMAS
         - $ref: "#/components/parameters/DataReferencia"
       responses:
         "200":
@@ -477,6 +484,8 @@ paths:
                   $ref: "#/components/examples/SimulacaoNoVencimento"
                 meioDoPeriodo:
                   $ref: "#/components/examples/SimulacaoMeioDoPeriodo"
+                proximasNoVencimento:
+                  $ref: "#/components/examples/SimulacaoProximasNoVencimento"
         "400":
           description: Parâmetro inválido, parcela vencida em aberto ou `PARCIALMENTE_PAGA`, ou pedido que cobre todas as parcelas em aberto (liquidação).
           content:
@@ -496,6 +505,10 @@ paths:
                   summary: quantidadeParcelas zero, negativa ou não inteira
                   value:
                     erro: quantidadeParcelas deve ser um inteiro maior que zero
+                modoInvalido:
+                  summary: modo diferente de ULTIMAS e PROXIMAS
+                  value:
+                    erro: modo deve ser ULTIMAS ou PROXIMAS
                 dataReferenciaInvalida:
                   summary: dataReferencia fora do formato
                   value:
@@ -530,9 +543,11 @@ paths:
   /operacoes/{identificador}/amortizacoes:
     post:
       tags: [Operações]
-      summary: Registra a antecipação das últimas parcelas
+      summary: Registra a antecipação de parcelas
       description: |
-        Quita as **últimas** `quantidadeParcelas` parcelas em aberto pelo valor presente (RN-16 e RN-17), com as mesmas regras e a mesma conta da simulação.
+        Quita `quantidadeParcelas` parcelas em aberto pelo valor presente (RN-16 e RN-17), com as mesmas regras e a mesma conta da simulação. O `modo` escolhe quais: as **últimas** (`ULTIMAS`, o padrão) ou as **próximas** a vencer (`PROXIMAS`).
+
+        No modo `PROXIMAS`, as parcelas que continuam em aberto mantêm valor e vencimento. A primeira delas só vence depois dos períodos das que foram quitadas, então o `juros` dela é o de todos esses períodos sobre o saldo, e as demais seguem o calendário original, com diferença de centavos. O saldo ainda termina em `0` na última.
 
         Grava o evento `AMORTIZACAO_ANTECIPADA` com **um lançamento por parcela quitada**, com `amortizacao`, `juros` (pro rata) e `desconto`, e recalcula a tabela das parcelas que restam, de modo que o saldo termine em `0` na última. A tabela atualizada sai em `GET /operacoes/{identificador}/parcelas`.
 
@@ -555,6 +570,13 @@ paths:
                   quantidadeParcelas: 2
                   dataPagamento: "2026-12-30"
                   identificadorPagamento: PAG-2026-0003
+              proximas:
+                summary: Antecipar as 2 próximas parcelas em 30/12/2026, com menos desconto
+                value:
+                  quantidadeParcelas: 2
+                  modo: PROXIMAS
+                  dataPagamento: "2026-12-30"
+                  identificadorPagamento: PAG-2026-0004
               semIdentificador:
                 summary: Sem identificadorPagamento e sem dataPagamento (vale hoje)
                 value:
@@ -577,6 +599,8 @@ paths:
                   $ref: "#/components/examples/AmortizacaoRegistradaNoVencimento"
                 meioDoPeriodo:
                   $ref: "#/components/examples/AmortizacaoRegistradaMeioDoPeriodo"
+                proximasNoVencimento:
+                  $ref: "#/components/examples/AmortizacaoRegistradaProximasNoVencimento"
         "200":
           description: Reenvio do mesmo `identificadorPagamento`. Devolve o registro já gravado, sem gravar de novo.
           content:
@@ -609,6 +633,10 @@ paths:
                   summary: quantidadeParcelas zero, negativa ou não inteira
                   value:
                     erro: quantidadeParcelas deve ser um inteiro maior que zero
+                modoInvalido:
+                  summary: modo diferente de ULTIMAS e PROXIMAS
+                  value:
+                    erro: modo deve ser ULTIMAS ou PROXIMAS
                 dataPagamentoInvalida:
                   summary: dataPagamento fora do formato
                   value:
@@ -1358,6 +1386,7 @@ components:
       summary: Antecipar as 2 últimas parcelas em 30/12/2026, com as parcelas 1 e 2 pagas (RN-17)
       value:
         numeroOperacao: OP-2026-0001
+        modo: ULTIMAS
         dataReferencia: "2026-12-30"
         quantidadeParcelas: 2
         parcelas:
@@ -1389,6 +1418,7 @@ components:
       summary: Antecipar as 2 últimas parcelas em 15/01/2027, no meio do período (RN-16 e RN-17)
       value:
         numeroOperacao: OP-2026-0001
+        modo: ULTIMAS
         dataReferencia: "2027-01-15"
         quantidadeParcelas: 2
         parcelas:
@@ -1422,6 +1452,7 @@ components:
         eventoId: 4
         tipo: AMORTIZACAO_ANTECIPADA
         numeroOperacao: OP-2026-0001
+        modo: ULTIMAS
         identificadorPagamento: PAG-2026-0003
         dataPagamento: "2026-12-30"
         quantidadeParcelas: 2
@@ -1456,6 +1487,7 @@ components:
         eventoId: 4
         tipo: AMORTIZACAO_ANTECIPADA
         numeroOperacao: OP-2026-0001
+        modo: ULTIMAS
         identificadorPagamento: PAG-2027-0001
         dataPagamento: "2027-01-15"
         quantidadeParcelas: 2
@@ -1534,6 +1566,74 @@ components:
               juros: 185
               amortizacao: 293.14
               desconto: 0
+
+    SimulacaoProximasNoVencimento:
+      summary: Antecipar as 2 próximas parcelas em 30/12/2026, com as parcelas 1 e 2 pagas (modo PROXIMAS)
+      value:
+        numeroOperacao: OP-2026-0001
+        modo: PROXIMAS
+        dataReferencia: "2026-12-30"
+        quantidadeParcelas: 2
+        parcelas:
+        - numero: 3
+          vencimento: "2027-02-01"
+          valorParcela: 936.91
+          valorPresente: 919.89
+          desconto: 17.02
+          amortizacao: 919.89
+          juros: 0
+        - numero: 4
+          vencimento: "2027-03-01"
+          valorParcela: 936.91
+          valorPresente: 903.18
+          desconto: 33.73
+          amortizacao: 903.18
+          juros: 0
+        totais:
+          valorParcelas: 1873.82
+          desconto: 50.75
+          valorPresente: 1823.07
+          amortizacao: 1823.07
+          juros: 0
+          valorAPagar: 1823.07
+        saldoDevedorAntes: 8482.27
+        saldoDevedorApos: 6659.2
+        quantidadeParcelasRestantes: 8
+    AmortizacaoRegistradaProximasNoVencimento:
+      summary: Antecipação das 2 próximas parcelas em 30/12/2026 (modo PROXIMAS)
+      value:
+        eventoId: 4
+        tipo: AMORTIZACAO_ANTECIPADA
+        numeroOperacao: OP-2026-0001
+        modo: PROXIMAS
+        identificadorPagamento: PAG-2026-0004
+        dataPagamento: "2026-12-30"
+        quantidadeParcelas: 2
+        lancamentos:
+        - numero: 3
+          vencimento: "2027-02-01"
+          valorParcela: 936.91
+          valorPresente: 919.89
+          desconto: 17.02
+          amortizacao: 919.89
+          juros: 0
+        - numero: 4
+          vencimento: "2027-03-01"
+          valorParcela: 936.91
+          valorPresente: 903.18
+          desconto: 33.73
+          amortizacao: 903.18
+          juros: 0
+        totais:
+          valorParcelas: 1873.82
+          desconto: 50.75
+          valorPresente: 1823.07
+          amortizacao: 1823.07
+          juros: 0
+          valorAPagar: 1823.07
+        saldoDevedorAntes: 8482.27
+        saldoDevedorApos: 6659.2
+        quantidadeParcelasRestantes: 8
 
   responses:
     IdentificadorInvalido:
@@ -2054,11 +2154,13 @@ components:
 
     SimulacaoAmortizacao:
       type: object
-      required: [numeroOperacao, dataReferencia, quantidadeParcelas, parcelas, totais, saldoDevedorAntes, saldoDevedorApos, quantidadeParcelasRestantes]
+      required: [numeroOperacao, modo, dataReferencia, quantidadeParcelas, parcelas, totais, saldoDevedorAntes, saldoDevedorApos, quantidadeParcelasRestantes]
       properties:
         numeroOperacao:
           type: string
           example: OP-2026-0001
+        modo:
+          $ref: "#/components/schemas/ModoAmortizacao"
         dataReferencia:
           type: string
           format: date
@@ -2090,6 +2192,13 @@ components:
           description: Parcelas que continuam em aberto depois da antecipação.
           example: 8
 
+    ModoAmortizacao:
+      type: string
+      enum: [ULTIMAS, PROXIMAS]
+      default: ULTIMAS
+      description: |
+        Quais parcelas a amortização quita (RN-17). `ULTIMAS` quita o fim do calendário: reduz o prazo e dá mais desconto. `PROXIMAS` quita as primeiras em aberto: dá bem menos desconto, o que é melhor para o negócio.
+
     AmortizacaoRequest:
       type: object
       required: [quantidadeParcelas]
@@ -2097,8 +2206,13 @@ components:
         quantidadeParcelas:
           type: integer
           minimum: 1
-          description: Quantas das últimas parcelas em aberto antecipar.
+          description: Quantas parcelas em aberto antecipar.
           example: 2
+        modo:
+          allOf:
+            - $ref: "#/components/schemas/ModoAmortizacao"
+          description: Quais parcelas antecipar. Sem o campo, vale `ULTIMAS`. Aceita minúsculas.
+          example: PROXIMAS
         dataPagamento:
           type: string
           format: date
@@ -2112,7 +2226,7 @@ components:
 
     AmortizacaoRegistrada:
       type: object
-      required: [eventoId, tipo, numeroOperacao, dataPagamento, quantidadeParcelas, lancamentos, totais, saldoDevedorAntes, saldoDevedorApos, quantidadeParcelasRestantes]
+      required: [eventoId, tipo, numeroOperacao, modo, dataPagamento, quantidadeParcelas, lancamentos, totais, saldoDevedorAntes, saldoDevedorApos, quantidadeParcelasRestantes]
       properties:
         eventoId:
           type: integer
@@ -2124,6 +2238,8 @@ components:
         numeroOperacao:
           type: string
           example: OP-2026-0001
+        modo:
+          $ref: "#/components/schemas/ModoAmortizacao"
         identificadorPagamento:
           type: string
           description: Só aparece quando foi enviado na requisição.
