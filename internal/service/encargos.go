@@ -7,8 +7,6 @@ import (
 	"github.com/unicsul-finops/financial-operations-service/internal/domain"
 )
 
-// PROVISÓRIO: o cálculo de multa e mora é da #7. quando ela entrar, este arquivo dá lugar à função dela.
-
 var (
 	percentualMulta = decimal.RequireFromString("0.02")
 	moraPorDia      = decimal.RequireFromString("0.01").Div(decimal.NewFromInt(30))

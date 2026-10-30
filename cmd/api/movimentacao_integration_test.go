@@ -83,6 +83,10 @@ func TestMovimentacaoIntegracao(t *testing.T) {
 	}
 	w, _ = request("GET", "/operacoes/OP-2025-0009/parcelas?dataReferencia=2025-12-10", "")
 	esperar(w, 200, `"numero":1,"vencimento":"2025-11-30","valorParcela":936.91,"amortizacao":751.91,"juros":185,"saldoDevedor":9248.09,"status":"VENCIDA","valorEmAberto":458.77`)
+	// #7: encargos em aberto depois do pagamento parcial (RN-13), e sem atraso zerados.
+	w, _ = request("GET", "/operacoes/OP-2025-0009/parcelas?dataReferencia=2025-12-20", "")
+	esperar(w, 200, `"valorEmAberto":458.77,"diasEmAtraso":20,"encargos":{"multa":0,"jurosMora":1.53,"total":1.53},"totalParaQuitar":460.3`,
+		`"diasEmAtraso":0,"encargos":{"multa":0,"jurosMora":0,"total":0},"totalParaQuitar":936.91`)
 	w, _ = request("POST", pagamentos, `{"valor": 10, "dataPagamento": "2025-12-09"}`)
 	esperar(w, 400, "dataPagamento não pode ser anterior à data da última movimentação financeira da operação")
 	w, _ = request("POST", pagamentos, `{"valor": 460.30, "dataPagamento": "2025-12-20", "identificadorPagamento": "app-2"}`)

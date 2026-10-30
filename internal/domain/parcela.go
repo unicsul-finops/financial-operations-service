@@ -25,6 +25,12 @@ type Parcela struct {
 	DescontoConcedido decimal.Decimal
 	ValorEmAberto     decimal.Decimal
 	DiasEmAtraso      int
+	// RN-13: calculados na consulta, para a dataReferencia, e nunca gravados.
+	MultaEmAberto   decimal.Decimal
+	MoraEmAberto    decimal.Decimal
+	TotalParaQuitar decimal.Decimal
+	// lançamentos já gravados da parcela, em ordem de data. são a base do cálculo dos encargos.
+	Lancamentos []LancamentoParcela
 }
 
 type NovaParcela struct {

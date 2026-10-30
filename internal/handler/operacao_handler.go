@@ -159,6 +159,15 @@ type ParcelaResponse struct {
 	Status        string          `json:"status"`
 	ValorEmAberto decimal.Decimal `json:"valorEmAberto"`
 	DiasEmAtraso  int             `json:"diasEmAtraso"`
+	// RN-13: multa e mora em aberto na dataReferencia, sempre presentes, inclusive zerados.
+	Encargos        EncargosParcelaResponse `json:"encargos"`
+	TotalParaQuitar decimal.Decimal         `json:"totalParaQuitar"`
+}
+
+type EncargosParcelaResponse struct {
+	Multa     decimal.Decimal `json:"multa"`
+	JurosMora decimal.Decimal `json:"jurosMora"`
+	Total     decimal.Decimal `json:"total"`
 }
 
 type OperacaoHandler struct {
@@ -362,6 +371,12 @@ func paraParcelasResponse(parcelas []domain.Parcela) []ParcelaResponse {
 			Status:        parcela.Status,
 			ValorEmAberto: parcela.ValorEmAberto,
 			DiasEmAtraso:  parcela.DiasEmAtraso,
+			Encargos: EncargosParcelaResponse{
+				Multa:     parcela.MultaEmAberto,
+				JurosMora: parcela.MoraEmAberto,
+				Total:     parcela.MultaEmAberto.Add(parcela.MoraEmAberto),
+			},
+			TotalParaQuitar: parcela.TotalParaQuitar,
 		})
 	}
 
