@@ -22,6 +22,9 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `GET` | `/operacoes` | Lista as operações (sem as parcelas) | `200` |
 | `GET` | `/operacoes/:identificador` | Consulta a situação na `dataReferencia` (opcional) | `200` |
 | `GET` | `/operacoes/:identificador/parcelas` | Consulta parcelas, atraso e encargos na `dataReferencia` (opcional) | `200` |
+| `GET` | `/operacoes/:identificador/amortizacoes/simulacao` | Simula a antecipação das últimas parcelas | `200` |
+| `POST` | `/operacoes/:identificador/amortizacoes` | Registra a antecipação das últimas parcelas | `201` (nova) / `200` (reenvio) |
+
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
 
@@ -247,6 +250,66 @@ Os erros de referência inválida ou anterior à última movimentação são os 
 
 A pasta Contrato #7 da coleção contém dois pedidos sem pagamento e respostas salvas para pagamento parcial e PAGA. Respostas salvas são exemplos do contrato, não evidência de execução. O cenário parcial exige preparar os lançamentos da RN-14; registrar pagamento pertence à #9. Os campos novos só funcionarão após aprovação do contrato e implementação em PR posterior.
 
+## `GET /operacoes/:identificador/amortizacoes/simulacao`
+
+Simula a antecipação das **últimas** `quantidadeParcelas` parcelas em aberto, sem gravar nada ([RN-16](../../requirements/regras-de-negocio-fase-2.md#rn-16-valor-presente) e [RN-17](../../requirements/regras-de-negocio-fase-2.md#rn-17-amortização-antecipada-parcial)):
+
+```text
+GET /operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2026-12-30
+```
+
+| Query | Obrigatória | Descrição |
+| --- | --- | --- |
+| `quantidadeParcelas` | sim | Inteiro maior que zero, menor que o total de parcelas em aberto. |
+| `dataReferencia` | não | `YYYY-MM-DD`, GMT-03:00. Sem ela, vale hoje. |
+
+Cada parcela entra pelo valor presente, `valorParcela / (1 + i) ^ (k − f)`. No meio de um período o valor presente se divide em `amortizacao` (principal) e `juros` (pro rata do período em curso); no dia de um vencimento `juros` é `0`. A parcela que vence na própria `dataReferencia` entra pelo valor em aberto, sem desconto. `desconto = valorParcela − valorPresente`, e a diferença de centavos do arredondamento fica na última parcela da lista.
+
+Exemplo da RN-17, com as parcelas 1 e 2 pagas, em 30/12/2026:
+
+```json
+{
+  "numeroOperacao": "OP-2026-0001",
+  "dataReferencia": "2026-12-30",
+  "quantidadeParcelas": 2,
+  "parcelas": [
+    { "numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "valorPresente": 794.42, "desconto": 142.49, "amortizacao": 794.42, "juros": 0 },
+    { "numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "valorPresente": 779.95, "desconto": 156.92, "amortizacao": 779.95, "juros": 0 }
+  ],
+  "totais": { "valorParcelas": 1873.78, "desconto": 299.41, "valorPresente": 1574.37, "amortizacao": 1574.37, "juros": 0, "valorAPagar": 1574.37 },
+  "saldoDevedorAntes": 8482.27,
+  "saldoDevedorApos": 6907.9,
+  "quantidadeParcelasRestantes": 8
+}
+```
+
+No meio do período (15/01/2027), as 2 últimas custam `1588.43`, sendo `1574.38` de `amortizacao` e `14.05` de `juros`, e o saldo devedor vai a `6907.89`. O exemplo completo está no `openapi.yaml`.
+
+Responde `400` com parcela vencida em aberto, com parcela `PARCIALMENTE_PAGA`, com `quantidadeParcelas` inválida ou que cobre todas as parcelas em aberto (isso é liquidação, [#11](https://github.com/unicsul-finops/financial-operations-service/issues/11)). Mensagens na seção [Erros](#erros).
+
+## `POST /operacoes/:identificador/amortizacoes`
+
+Quita as últimas `quantidadeParcelas` parcelas em aberto, com a mesma conta da simulação:
+
+```json
+{
+  "quantidadeParcelas": 2,
+  "dataPagamento": "2026-12-30",
+  "identificadorPagamento": "PAG-2026-0003"
+}
+```
+
+| Campo | Tipo | Obrigatório | Descrição |
+| --- | --- | --- | --- |
+| `quantidadeParcelas` | inteiro | sim | Maior que zero, menor que o total de parcelas em aberto. |
+| `dataPagamento` | data | não | `YYYY-MM-DD`. Sem o campo, vale hoje. Não pode ser futura, nem anterior à `dataLiberacao` ou ao último pagamento (RN-09). |
+| `identificadorPagamento` | texto | não | Até 50 caracteres. Chave de idempotência por operação. |
+
+- `201 Created` com o header `Location: /operacoes/OP-2026-0001`, ou `200 OK` no reenvio do mesmo `identificadorPagamento`, sem gravar de novo.
+- Grava o evento `AMORTIZACAO_ANTECIPADA` com **um lançamento por parcela quitada** (`amortizacao`, `juros` pro rata e `desconto`) e recalcula as parcelas que restam, com saldo `0` na última. A tabela atualizada está em `GET /operacoes/:identificador/parcelas`.
+- A resposta traz `eventoId`, `tipo`, `lancamentos` (mesmo formato das `parcelas` da simulação), `totais`, `saldoDevedorAntes`, `saldoDevedorApos` e `quantidadeParcelasRestantes`.
+- Mesmas regras de `400` da simulação.
+
 
 ## `GET /health`
 
@@ -326,8 +389,29 @@ Mensagens de validação do `POST /operacoes`:
 | `resumo.totalJuros deve ser a soma dos juros do calendario` |
 | `resumo.totalPago deve ser a soma do valor das parcelas do calendario` |
 
+Mensagens da simulação e da amortização antecipada (os números mudam conforme a operação):
+
+| Mensagem |
+| --- |
+| `quantidadeParcelas é obrigatório` |
+| `quantidadeParcelas deve ser um inteiro maior que zero` |
+| `dataReferencia deve estar no formato YYYY-MM-DD` |
+| `dataReferencia não pode ser anterior à data do último pagamento (2026-12-30)` |
+| `dataPagamento deve estar no formato YYYY-MM-DD` |
+| `dataPagamento não pode ser futura` |
+| `dataPagamento não pode ser anterior à dataLiberacao (2026-10-30)` |
+| `dataPagamento não pode ser anterior à data do último pagamento (2026-12-30)` |
+| `identificadorPagamento deve ter no máximo 50 caracteres` |
+| `a operação já está liquidada, não há parcelas para antecipar` |
+| `a parcela 1 está vencida e em aberto, pague o atraso antes de antecipar parcelas` |
+| `a parcela 5 está parcialmente paga, quite a parcela antes de antecipar parcelas` |
+| `quantidadeParcelas não pode ser maior que as 10 parcelas em aberto` |
+| `quantidadeParcelas cobre todas as 10 parcelas em aberto, para quitar tudo use a liquidação da operação` |
+
 > **Limitação conhecida:** falhas inesperadas do banco também são devolvidas como `400`, com a mensagem original do erro. Separá-las em `500` está previsto ([ADR-002](../adr/ADR-002-arquitetura-em-camadas.md)).
 
 ## Idempotência
 
 O `POST /operacoes` é idempotente pelo `operacao.identificador`. Reenviar o mesmo identificador (por timeout, por exemplo) não cria outra operação: a resposta é `200` com a confirmação da operação já gravada. Dois envios simultâneos também resultam em uma única operação, garantida pela constraint `UNIQUE` do `numero_operacao`. Ver [ADR-009](../adr/ADR-009-operacao-a-partir-da-simulacao-de-juros.md).
+
+O `POST /operacoes/:identificador/amortizacoes` é idempotente pelo `identificadorPagamento`, por operação: reenviar o mesmo identificador devolve `200` com o registro já gravado.

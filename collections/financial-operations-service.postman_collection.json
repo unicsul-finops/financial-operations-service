@@ -646,6 +646,126 @@
             },
             "description": "O cálculo da listagem é o mesmo do detalhe. As duas operações criadas acima têm a parcela 1 vencida em 30/11/2026."
           }
+        },
+        {
+          "name": "Simular amortização antecipada (dataReferencia 2026-11-30)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"2 últimas parcelas pelo valor presente, sem juros no dia do vencimento\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.numeroOperacao).to.equal(\"OP-2026-0001\");",
+                  "  pm.expect(b.quantidadeParcelas).to.equal(2);",
+                  "  pm.expect(b.parcelas.map(p => p.numero)).to.eql([11, 12]);",
+                  "  pm.expect(b.parcelas[0].valorPresente).to.equal(779.99);",
+                  "  pm.expect(b.parcelas[1].valorPresente).to.equal(765.79);",
+                  "  pm.expect(b.parcelas[0].juros).to.equal(0);",
+                  "});",
+                  "",
+                  "pm.test(\"totais, saldo e parcelas restantes\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.totais.valorParcelas).to.equal(1873.78);",
+                  "  pm.expect(b.totais.desconto).to.equal(328);",
+                  "  pm.expect(b.totais.valorPresente).to.equal(1545.78);",
+                  "  pm.expect(b.totais.amortizacao).to.equal(1545.78);",
+                  "  pm.expect(b.totais.juros).to.equal(0);",
+                  "  pm.expect(b.totais.valorAPagar).to.equal(1545.78);",
+                  "  pm.expect(b.saldoDevedorAntes).to.equal(10000);",
+                  "  pm.expect(b.saldoDevedorApos).to.equal(8454.22);",
+                  "  pm.expect(b.quantidadeParcelasRestantes).to.equal(10);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2026-11-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "quantidadeParcelas",
+                  "value": "2"
+                },
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-11-30"
+                }
+              ]
+            },
+            "description": "RN-16 e RN-17 no dia do 1º vencimento (parcela 1 entra pelo valor em aberto, mas não faz parte das 2 últimas). Sem pagamentos, o saldo devedor é o valor aprovado. Não grava nada."
+          }
+        },
+        {
+          "name": "Simular amortização no meio do período (dataReferencia 2026-11-15)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"valor presente se divide em amortização e juros pro rata\", function () {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.totais.valorPresente).to.equal(1532.12);",
+                  "  pm.expect(b.totais.amortizacao).to.equal(1517.69);",
+                  "  pm.expect(b.totais.juros).to.equal(14.43);",
+                  "  pm.expect(b.totais.desconto).to.equal(341.66);",
+                  "  pm.expect(b.totais.valorAPagar).to.equal(1532.12);",
+                  "  pm.expect(b.saldoDevedorApos).to.equal(8482.31);",
+                  "  pm.expect(b.parcelas[0].juros > 0).to.equal(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2026-11-15",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "quantidadeParcelas",
+                  "value": "2"
+                },
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-11-15"
+                }
+              ]
+            },
+            "description": "RN-16 no meio do 1º período (16 de 31 dias já decorridos desde a dataLiberacao). amortizacao + juros = valorPresente, e a diferença de centavos fica na última parcela."
+          }
         }
       ]
     },
@@ -1287,7 +1407,352 @@
               ],
               "body": "[\n  {\n    \"numero\": 1,\n    \"vencimento\": \"2026-11-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 751.91,\n    \"juros\": 185,\n    \"saldoDevedor\": 9248.09,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 2,\n    \"vencimento\": \"2026-12-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 765.82,\n    \"juros\": 171.09,\n    \"saldoDevedor\": 8482.27,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 3,\n    \"vencimento\": \"2027-02-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 779.99,\n    \"juros\": 156.92,\n    \"saldoDevedor\": 7702.28,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 4,\n    \"vencimento\": \"2027-03-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 794.42,\n    \"juros\": 142.49,\n    \"saldoDevedor\": 6907.86,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 5,\n    \"vencimento\": \"2027-03-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 809.11,\n    \"juros\": 127.8,\n    \"saldoDevedor\": 6098.75,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 6,\n    \"vencimento\": \"2027-04-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 824.08,\n    \"juros\": 112.83,\n    \"saldoDevedor\": 5274.67,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 7,\n    \"vencimento\": \"2027-05-31\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 839.33,\n    \"juros\": 97.58,\n    \"saldoDevedor\": 4435.34,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 8,\n    \"vencimento\": \"2027-06-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 854.86,\n    \"juros\": 82.05,\n    \"saldoDevedor\": 3580.48,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 9,\n    \"vencimento\": \"2027-07-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 870.67,\n    \"juros\": 66.24,\n    \"saldoDevedor\": 2709.81,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 10,\n    \"vencimento\": \"2027-08-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 886.78,\n    \"juros\": 50.13,\n    \"saldoDevedor\": 1823.03,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 11,\n    \"vencimento\": \"2027-09-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 903.18,\n    \"juros\": 33.73,\n    \"saldoDevedor\": 919.85,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 12,\n    \"vencimento\": \"2027-11-01\",\n    \"valorParcela\": 936.87,\n    \"amortizacao\": 919.85,\n    \"juros\": 17.02,\n    \"saldoDevedor\": 0,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  }\n]"
             }
-          ]
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes?dataReferencia=hoje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ],
+              "query": [
+                {
+                  "key": "dataReferencia",
+                  "value": "hoje"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Simulação sem quantidadeParcelas (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"quantidadeParcelas é obrigatório\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes/simulacao?dataReferencia=2026-11-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-11-30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Simulação com parcela vencida em aberto (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"a parcela 1 está vencida e em aberto, pague o atraso antes de antecipar parcelas\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2026-12-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "quantidadeParcelas",
+                  "value": "2"
+                },
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-12-30"
+                }
+              ]
+            },
+            "description": "RN-17: sem pagamentos, a parcela 1 (vencida em 30/11/2026) está em aberto em 30/12/2026."
+          }
+        },
+        {
+          "name": "Simulação pedindo todas as parcelas (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"quantidadeParcelas cobre todas as 12 parcelas em aberto, para quitar tudo use a liquidação da operação\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=12&dataReferencia=2026-11-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "quantidadeParcelas",
+                  "value": "12"
+                },
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-11-30"
+                }
+              ]
+            },
+            "description": "RN-17: antecipar todas as parcelas em aberto é liquidação total."
+          }
+        },
+        {
+          "name": "Simulação com mais parcelas do que as em aberto (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"quantidadeParcelas não pode ser maior que as 12 parcelas em aberto\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=13&dataReferencia=2026-11-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "quantidadeParcelas",
+                  "value": "13"
+                },
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-11-30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Simulação de operação inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"operação não encontrada\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-1999-9999/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2026-11-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-1999-9999",
+                "amortizacoes",
+                "simulacao"
+              ],
+              "query": [
+                {
+                  "key": "quantidadeParcelas",
+                  "value": "2"
+                },
+                {
+                  "key": "dataReferencia",
+                  "value": "2026-11-30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Amortização com quantidadeParcelas zerada (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(400);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"quantidadeParcelas deve ser um inteiro maior que zero\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-2026-0001/amortizacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-2026-0001",
+                "amortizacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantidadeParcelas\": 0,\n  \"dataPagamento\": \"2026-11-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Amortização de operação inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(404);",
+                  "});",
+                  "",
+                  "pm.test(\"mensagem de erro\", function () {",
+                  "  pm.expect(pm.response.json().erro).to.equal(\"operação não encontrada\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/operacoes/OP-1999-9999/amortizacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes",
+                "OP-1999-9999",
+                "amortizacoes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantidadeParcelas\": 2,\n  \"dataPagamento\": \"2026-11-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     }

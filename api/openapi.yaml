@@ -25,7 +25,7 @@ servers:
 
 tags:
   - name: Operações
-    description: Registro, consulta e situação (atraso e inadimplência) das operações definidas no serviço de juros.
+    description: Registro, consulta, situação (atraso e inadimplência) e amortização antecipada das operações definidas no serviço de juros.
   - name: Saúde
     description: Verificação de disponibilidade.
 
@@ -376,70 +376,217 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Parcela"
-              examples:
-                noVencimento:
-                  summary: Calendário sem pagamentos em 2026-11-30
-                  value:
-                    - {"numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 2, "vencimento": "2026-12-30", "valorParcela": 936.91, "amortizacao": 765.82, "juros": 171.09, "saldoDevedor": 8482.27, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 3, "vencimento": "2027-02-01", "valorParcela": 936.91, "amortizacao": 779.99, "juros": 156.92, "saldoDevedor": 7702.28, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 4, "vencimento": "2027-03-01", "valorParcela": 936.91, "amortizacao": 794.42, "juros": 142.49, "saldoDevedor": 6907.86, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 5, "vencimento": "2027-03-30", "valorParcela": 936.91, "amortizacao": 809.11, "juros": 127.8, "saldoDevedor": 6098.75, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 6, "vencimento": "2027-04-30", "valorParcela": 936.91, "amortizacao": 824.08, "juros": 112.83, "saldoDevedor": 5274.67, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 7, "vencimento": "2027-05-31", "valorParcela": 936.91, "amortizacao": 839.33, "juros": 97.58, "saldoDevedor": 4435.34, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 8, "vencimento": "2027-06-30", "valorParcela": 936.91, "amortizacao": 854.86, "juros": 82.05, "saldoDevedor": 3580.48, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 9, "vencimento": "2027-07-30", "valorParcela": 936.91, "amortizacao": 870.67, "juros": 66.24, "saldoDevedor": 2709.81, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 10, "vencimento": "2027-08-30", "valorParcela": 936.91, "amortizacao": 886.78, "juros": 50.13, "saldoDevedor": 1823.03, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PENDENTE", "valorEmAberto": 936.87, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.87}
-                dezDiasEmAtraso:
-                  summary: Calendário sem pagamentos em 2026-12-10
-                  value:
-                    - {"numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "VENCIDA", "valorEmAberto": 936.91, "diasEmAtraso": 10, "encargos": {"multa": 18.74, "jurosMora": 3.12, "total": 21.86}, "totalParaQuitar": 958.77}
-                    - {"numero": 2, "vencimento": "2026-12-30", "valorParcela": 936.91, "amortizacao": 765.82, "juros": 171.09, "saldoDevedor": 8482.27, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 3, "vencimento": "2027-02-01", "valorParcela": 936.91, "amortizacao": 779.99, "juros": 156.92, "saldoDevedor": 7702.28, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 4, "vencimento": "2027-03-01", "valorParcela": 936.91, "amortizacao": 794.42, "juros": 142.49, "saldoDevedor": 6907.86, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 5, "vencimento": "2027-03-30", "valorParcela": 936.91, "amortizacao": 809.11, "juros": 127.8, "saldoDevedor": 6098.75, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 6, "vencimento": "2027-04-30", "valorParcela": 936.91, "amortizacao": 824.08, "juros": 112.83, "saldoDevedor": 5274.67, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 7, "vencimento": "2027-05-31", "valorParcela": 936.91, "amortizacao": 839.33, "juros": 97.58, "saldoDevedor": 4435.34, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 8, "vencimento": "2027-06-30", "valorParcela": 936.91, "amortizacao": 854.86, "juros": 82.05, "saldoDevedor": 3580.48, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 9, "vencimento": "2027-07-30", "valorParcela": 936.91, "amortizacao": 870.67, "juros": 66.24, "saldoDevedor": 2709.81, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 10, "vencimento": "2027-08-30", "valorParcela": 936.91, "amortizacao": 886.78, "juros": 50.13, "saldoDevedor": 1823.03, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PENDENTE", "valorEmAberto": 936.87, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.87}
-                aposPagamentoParcial:
-                  summary: RN-14 em 2026-12-20 após pagamento parcial de 500 em 2026-12-10
-                  description: Pagamento distribuiu 18,74 para multa, 3,12 para mora, 185 para juros e 293,14 para amortização. O estado gravado é PARCIALMENTE_PAGA, exibido VENCIDA na consulta (RN-11). SaldoDevedor da parcela permanece o do calendário; o saldo da operação é 9706,86.
-                  value:
-                    - {"numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "VENCIDA", "valorEmAberto": 458.77, "diasEmAtraso": 20, "encargos": {"multa": 0, "jurosMora": 1.53, "total": 1.53}, "totalParaQuitar": 460.3}
-                    - {"numero": 2, "vencimento": "2026-12-30", "valorParcela": 936.91, "amortizacao": 765.82, "juros": 171.09, "saldoDevedor": 8482.27, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 3, "vencimento": "2027-02-01", "valorParcela": 936.91, "amortizacao": 779.99, "juros": 156.92, "saldoDevedor": 7702.28, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 4, "vencimento": "2027-03-01", "valorParcela": 936.91, "amortizacao": 794.42, "juros": 142.49, "saldoDevedor": 6907.86, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 5, "vencimento": "2027-03-30", "valorParcela": 936.91, "amortizacao": 809.11, "juros": 127.8, "saldoDevedor": 6098.75, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 6, "vencimento": "2027-04-30", "valorParcela": 936.91, "amortizacao": 824.08, "juros": 112.83, "saldoDevedor": 5274.67, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 7, "vencimento": "2027-05-31", "valorParcela": 936.91, "amortizacao": 839.33, "juros": 97.58, "saldoDevedor": 4435.34, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 8, "vencimento": "2027-06-30", "valorParcela": 936.91, "amortizacao": 854.86, "juros": 82.05, "saldoDevedor": 3580.48, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 9, "vencimento": "2027-07-30", "valorParcela": 936.91, "amortizacao": 870.67, "juros": 66.24, "saldoDevedor": 2709.81, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 10, "vencimento": "2027-08-30", "valorParcela": 936.91, "amortizacao": 886.78, "juros": 50.13, "saldoDevedor": 1823.03, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PENDENTE", "valorEmAberto": 936.91, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.91}
-                    - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PENDENTE", "valorEmAberto": 936.87, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 936.87}
-                pagas:
-                  summary: Parcelas quitadas, inclusive com desconto (RN-13)
-                  value:
-                    - {"numero": 1, "vencimento": "2026-11-30", "valorParcela": 936.91, "amortizacao": 751.91, "juros": 185, "saldoDevedor": 9248.09, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 2, "vencimento": "2026-12-30", "valorParcela": 936.91, "amortizacao": 765.82, "juros": 171.09, "saldoDevedor": 8482.27, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 3, "vencimento": "2027-02-01", "valorParcela": 936.91, "amortizacao": 779.99, "juros": 156.92, "saldoDevedor": 7702.28, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 4, "vencimento": "2027-03-01", "valorParcela": 936.91, "amortizacao": 794.42, "juros": 142.49, "saldoDevedor": 6907.86, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 5, "vencimento": "2027-03-30", "valorParcela": 936.91, "amortizacao": 809.11, "juros": 127.8, "saldoDevedor": 6098.75, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 6, "vencimento": "2027-04-30", "valorParcela": 936.91, "amortizacao": 824.08, "juros": 112.83, "saldoDevedor": 5274.67, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 7, "vencimento": "2027-05-31", "valorParcela": 936.91, "amortizacao": 839.33, "juros": 97.58, "saldoDevedor": 4435.34, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 8, "vencimento": "2027-06-30", "valorParcela": 936.91, "amortizacao": 854.86, "juros": 82.05, "saldoDevedor": 3580.48, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 9, "vencimento": "2027-07-30", "valorParcela": 936.91, "amortizacao": 870.67, "juros": 66.24, "saldoDevedor": 2709.81, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 10, "vencimento": "2027-08-30", "valorParcela": 936.91, "amortizacao": 886.78, "juros": 50.13, "saldoDevedor": 1823.03, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 11, "vencimento": "2027-09-30", "valorParcela": 936.91, "amortizacao": 903.18, "juros": 33.73, "saldoDevedor": 919.85, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
-                    - {"numero": 12, "vencimento": "2027-11-01", "valorParcela": 936.87, "amortizacao": 919.85, "juros": 17.02, "saldoDevedor": 0, "status": "PAGA", "valorEmAberto": 0, "diasEmAtraso": 0, "encargos": {"multa": 0, "jurosMora": 0, "total": 0}, "totalParaQuitar": 0}
         "400":
           $ref: "#/components/responses/IdentificadorInvalido"
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /operacoes/{identificador}/amortizacoes/simulacao:
+    get:
+      tags: [Operações]
+      summary: Simula a antecipação das últimas parcelas
+      description: |
+        Calcula, sem gravar nada, quanto custa antecipar as **últimas** `quantidadeParcelas` parcelas em aberto na `dataReferencia` (RN-16 e RN-17).
+
+        Cada parcela entra pelo valor presente, `valorParcela / (1 + i) ^ (k − f)`, em que `i` é a taxa mensal do contrato, `k` é a posição da parcela entre as que ainda vão vencer e `f` é a fração já decorrida do período atual. No meio de um período, o valor presente se divide em `amortizacao` (parte de principal) e `juros` (juros pro rata do período em curso); no dia de um vencimento, `juros` é `0`. A parcela que vence na própria `dataReferencia` entra pelo valor em aberto, sem desconto. O `desconto` é `valorParcela − valorPresente`. A diferença de centavos do arredondamento fica na última parcela da lista.
+
+        Responde `400` se houver parcela vencida em aberto ou `PARCIALMENTE_PAGA`, se a `quantidadeParcelas` for inválida ou se ela cobrir todas as parcelas em aberto, porque isso é liquidação total.
+      operationId: simularAmortizacao
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+        - name: quantidadeParcelas
+          in: query
+          required: true
+          description: Quantas das últimas parcelas em aberto antecipar. Maior que zero e menor que o total de parcelas em aberto.
+          schema:
+            type: integer
+            minimum: 1
+          example: 2
+        - $ref: "#/components/parameters/DataReferencia"
+      responses:
+        "200":
+          description: Simulação calculada. Nada foi gravado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulacaoAmortizacao"
+              examples:
+                noVencimento:
+                  $ref: "#/components/examples/SimulacaoNoVencimento"
+                meioDoPeriodo:
+                  $ref: "#/components/examples/SimulacaoMeioDoPeriodo"
+        "400":
+          description: Parâmetro inválido, parcela vencida em aberto ou `PARCIALMENTE_PAGA`, ou pedido que cobre todas as parcelas em aberto (liquidação).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                identificadorInvalido:
+                  summary: Identificador que não é id nem numeroOperacao
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                quantidadeAusente:
+                  summary: quantidadeParcelas não enviada
+                  value:
+                    erro: quantidadeParcelas é obrigatório
+                quantidadeInvalida:
+                  summary: quantidadeParcelas zero, negativa ou não inteira
+                  value:
+                    erro: quantidadeParcelas deve ser um inteiro maior que zero
+                dataReferenciaInvalida:
+                  summary: dataReferencia fora do formato
+                  value:
+                    erro: dataReferencia deve estar no formato YYYY-MM-DD
+                dataReferenciaAnteriorAoUltimoPagamento:
+                  summary: dataReferencia antes do último pagamento (RN-09)
+                  value:
+                    erro: dataReferencia não pode ser anterior à data do último pagamento (2026-12-30)
+                operacaoLiquidada:
+                  summary: Operação já liquidada
+                  value:
+                    erro: a operação já está liquidada, não há parcelas para antecipar
+                parcelaVencida:
+                  summary: Parcela vencida em aberto (RN-17)
+                  value:
+                    erro: a parcela 1 está vencida e em aberto, pague o atraso antes de antecipar parcelas
+                parcelaParcialmentePaga:
+                  summary: Parcela PARCIALMENTE_PAGA (RN-17)
+                  value:
+                    erro: a parcela 5 está parcialmente paga, quite a parcela antes de antecipar parcelas
+                quantidadeMaiorQueEmAberto:
+                  summary: Mais parcelas do que as em aberto
+                  value:
+                    erro: quantidadeParcelas não pode ser maior que as 10 parcelas em aberto
+                todasAsParcelas:
+                  summary: Todas as parcelas em aberto, isso é liquidação (RN-17)
+                  value:
+                    erro: quantidadeParcelas cobre todas as 10 parcelas em aberto, para quitar tudo use a liquidação da operação
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+  /operacoes/{identificador}/amortizacoes:
+    post:
+      tags: [Operações]
+      summary: Registra a antecipação das últimas parcelas
+      description: |
+        Quita as **últimas** `quantidadeParcelas` parcelas em aberto pelo valor presente (RN-16 e RN-17), com as mesmas regras e a mesma conta da simulação.
+
+        Grava o evento `AMORTIZACAO_ANTECIPADA` com **um lançamento por parcela quitada**, com `amortizacao`, `juros` (pro rata) e `desconto`, e recalcula a tabela das parcelas que restam, de modo que o saldo termine em `0` na última. A tabela atualizada sai em `GET /operacoes/{identificador}/parcelas`.
+
+        Sem `dataPagamento`, vale hoje (RN-09). O `identificadorPagamento` é opcional e serve de chave de idempotência: reenviar o mesmo identificador na mesma operação devolve `200` com o registro já gravado, sem gravar de novo. Se ele não for enviado, o campo não aparece na resposta.
+
+        Responde `400` se houver parcela vencida em aberto ou `PARCIALMENTE_PAGA`, se a `quantidadeParcelas` for inválida ou se ela cobrir todas as parcelas em aberto, porque isso é liquidação total.
+      operationId: registrarAmortizacao
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AmortizacaoRequest"
+            examples:
+              rn17:
+                summary: Antecipar as 2 últimas parcelas em 30/12/2026 (RN-17)
+                value:
+                  quantidadeParcelas: 2
+                  dataPagamento: "2026-12-30"
+                  identificadorPagamento: PAG-2026-0003
+              semIdentificador:
+                summary: Sem identificadorPagamento e sem dataPagamento (vale hoje)
+                value:
+                  quantidadeParcelas: 2
+      responses:
+        "201":
+          description: Amortização registrada.
+          headers:
+            Location:
+              description: Caminho da operação, pelo `numeroOperacao`.
+              schema:
+                type: string
+              example: /operacoes/OP-2026-0001
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmortizacaoRegistrada"
+              examples:
+                noVencimento:
+                  $ref: "#/components/examples/AmortizacaoRegistradaNoVencimento"
+                meioDoPeriodo:
+                  $ref: "#/components/examples/AmortizacaoRegistradaMeioDoPeriodo"
+        "200":
+          description: Reenvio do mesmo `identificadorPagamento`. Devolve o registro já gravado, sem gravar de novo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmortizacaoRegistrada"
+              examples:
+                reenvio:
+                  $ref: "#/components/examples/AmortizacaoRegistradaNoVencimento"
+        "400":
+          description: JSON inválido, data fora das regras, parcela vencida em aberto ou `PARCIALMENTE_PAGA`, ou pedido que cobre todas as parcelas em aberto (liquidação).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                identificadorInvalido:
+                  summary: Identificador que não é id nem numeroOperacao
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                corpoInvalido:
+                  summary: JSON malformado ou com tipo errado
+                  value:
+                    erro: corpo da requisição inválido
+                quantidadeAusente:
+                  summary: quantidadeParcelas não enviada
+                  value:
+                    erro: quantidadeParcelas é obrigatório
+                quantidadeInvalida:
+                  summary: quantidadeParcelas zero, negativa ou não inteira
+                  value:
+                    erro: quantidadeParcelas deve ser um inteiro maior que zero
+                dataPagamentoInvalida:
+                  summary: dataPagamento fora do formato
+                  value:
+                    erro: dataPagamento deve estar no formato YYYY-MM-DD
+                dataPagamentoFutura:
+                  summary: dataPagamento no futuro (RN-09)
+                  value:
+                    erro: dataPagamento não pode ser futura
+                dataPagamentoAnteriorALiberacao:
+                  summary: dataPagamento antes da dataLiberacao (RN-09)
+                  value:
+                    erro: dataPagamento não pode ser anterior à dataLiberacao (2026-10-30)
+                dataPagamentoAnteriorAoUltimoPagamento:
+                  summary: dataPagamento antes do último pagamento (RN-09)
+                  value:
+                    erro: dataPagamento não pode ser anterior à data do último pagamento (2026-12-30)
+                identificadorPagamentoLongo:
+                  summary: identificadorPagamento com mais de 50 caracteres
+                  value:
+                    erro: identificadorPagamento deve ter no máximo 50 caracteres
+                operacaoLiquidada:
+                  summary: Operação já liquidada
+                  value:
+                    erro: a operação já está liquidada, não há parcelas para antecipar
+                parcelaVencida:
+                  summary: Parcela vencida em aberto (RN-17)
+                  value:
+                    erro: a parcela 1 está vencida e em aberto, pague o atraso antes de antecipar parcelas
+                parcelaParcialmentePaga:
+                  summary: Parcela PARCIALMENTE_PAGA (RN-17)
+                  value:
+                    erro: a parcela 5 está parcialmente paga, quite a parcela antes de antecipar parcelas
+                quantidadeMaiorQueEmAberto:
+                  summary: Mais parcelas do que as em aberto
+                  value:
+                    erro: quantidadeParcelas não pode ser maior que as 10 parcelas em aberto
+                todasAsParcelas:
+                  summary: Todas as parcelas em aberto, isso é liquidação (RN-17)
+                  value:
+                    erro: quantidadeParcelas cobre todas as 10 parcelas em aberto, para quitar tudo use a liquidação da operação
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
@@ -626,6 +773,136 @@ components:
           mensal: 0.0227
           anual: 0.3089
         criadoEm: "2026-10-08T18:13:02Z"
+    SimulacaoNoVencimento:
+      summary: Antecipar as 2 últimas parcelas em 30/12/2026, com as parcelas 1 e 2 pagas (RN-17)
+      value:
+        numeroOperacao: OP-2026-0001
+        dataReferencia: "2026-12-30"
+        quantidadeParcelas: 2
+        parcelas:
+        - numero: 11
+          vencimento: "2027-09-30"
+          valorParcela: 936.91
+          valorPresente: 794.42
+          desconto: 142.49
+          amortizacao: 794.42
+          juros: 0
+        - numero: 12
+          vencimento: "2027-11-01"
+          valorParcela: 936.87
+          valorPresente: 779.95
+          desconto: 156.92
+          amortizacao: 779.95
+          juros: 0
+        totais:
+          valorParcelas: 1873.78
+          desconto: 299.41
+          valorPresente: 1574.37
+          amortizacao: 1574.37
+          juros: 0
+          valorAPagar: 1574.37
+        saldoDevedorAntes: 8482.27
+        saldoDevedorApos: 6907.9
+        quantidadeParcelasRestantes: 8
+    SimulacaoMeioDoPeriodo:
+      summary: Antecipar as 2 últimas parcelas em 15/01/2027, no meio do período (RN-16 e RN-17)
+      value:
+        numeroOperacao: OP-2026-0001
+        dataReferencia: "2027-01-15"
+        quantidadeParcelas: 2
+        parcelas:
+        - numero: 11
+          vencimento: "2027-09-30"
+          valorParcela: 936.91
+          valorPresente: 801.51
+          desconto: 135.4
+          amortizacao: 794.42
+          juros: 7.09
+        - numero: 12
+          vencimento: "2027-11-01"
+          valorParcela: 936.87
+          valorPresente: 786.92
+          desconto: 149.95
+          amortizacao: 779.96
+          juros: 6.96
+        totais:
+          valorParcelas: 1873.78
+          desconto: 285.35
+          valorPresente: 1588.43
+          amortizacao: 1574.38
+          juros: 14.05
+          valorAPagar: 1588.43
+        saldoDevedorAntes: 8482.27
+        saldoDevedorApos: 6907.89
+        quantidadeParcelasRestantes: 8
+    AmortizacaoRegistradaNoVencimento:
+      summary: Antecipação das 2 últimas parcelas em 30/12/2026 (RN-17)
+      value:
+        eventoId: 4
+        tipo: AMORTIZACAO_ANTECIPADA
+        numeroOperacao: OP-2026-0001
+        identificadorPagamento: PAG-2026-0003
+        dataPagamento: "2026-12-30"
+        quantidadeParcelas: 2
+        lancamentos:
+        - numero: 11
+          vencimento: "2027-09-30"
+          valorParcela: 936.91
+          valorPresente: 794.42
+          desconto: 142.49
+          amortizacao: 794.42
+          juros: 0
+        - numero: 12
+          vencimento: "2027-11-01"
+          valorParcela: 936.87
+          valorPresente: 779.95
+          desconto: 156.92
+          amortizacao: 779.95
+          juros: 0
+        totais:
+          valorParcelas: 1873.78
+          desconto: 299.41
+          valorPresente: 1574.37
+          amortizacao: 1574.37
+          juros: 0
+          valorAPagar: 1574.37
+        saldoDevedorAntes: 8482.27
+        saldoDevedorApos: 6907.9
+        quantidadeParcelasRestantes: 8
+    AmortizacaoRegistradaMeioDoPeriodo:
+      summary: Antecipação das 2 últimas parcelas em 15/01/2027, no meio do período (RN-16 e RN-17)
+      value:
+        eventoId: 4
+        tipo: AMORTIZACAO_ANTECIPADA
+        numeroOperacao: OP-2026-0001
+        identificadorPagamento: PAG-2027-0001
+        dataPagamento: "2027-01-15"
+        quantidadeParcelas: 2
+        lancamentos:
+        - numero: 11
+          vencimento: "2027-09-30"
+          valorParcela: 936.91
+          valorPresente: 801.51
+          desconto: 135.4
+          amortizacao: 794.42
+          juros: 7.09
+        - numero: 12
+          vencimento: "2027-11-01"
+          valorParcela: 936.87
+          valorPresente: 786.92
+          desconto: 149.95
+          amortizacao: 779.96
+          juros: 6.96
+        totais:
+          valorParcelas: 1873.78
+          desconto: 285.35
+          valorPresente: 1588.43
+          amortizacao: 1574.38
+          juros: 14.05
+          valorAPagar: 1588.43
+        saldoDevedorAntes: 8482.27
+        saldoDevedorApos: 6907.89
+        quantidadeParcelasRestantes: 8
 
   responses:
     IdentificadorInvalido:
@@ -1066,6 +1343,190 @@ components:
           example: 958.77
         status:
           $ref: "#/components/schemas/StatusParcela"
+
+
+    ParcelaAmortizada:
+      type: object
+      description: |
+        Uma parcela antecipada. `valorPresente = amortizacao + juros` e `desconto = valorParcela − valorPresente`. No evento, o `valorPresente` é o valor lançado para a parcela.
+      required: [numero, vencimento, valorParcela, valorPresente, desconto, amortizacao, juros]
+      properties:
+        numero:
+          type: integer
+          minimum: 1
+          example: 11
+        vencimento:
+          type: string
+          format: date
+          example: "2027-09-30"
+        valorParcela:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Valor da parcela no calendário."
+          example: 936.91
+        valorPresente:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Quanto vale a parcela na data, a ser paga por ela."
+          example: 794.42
+        desconto:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "`valorParcela − valorPresente`."
+          example: 142.49
+        amortizacao:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Parte de principal do valor presente."
+          example: 794.42
+        juros:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Juros pro rata do período em curso. É `0` no dia de um vencimento."
+          example: 0
+
+    TotaisAmortizacao:
+      type: object
+      description: Soma das parcelas antecipadas.
+      required: [valorParcelas, desconto, valorPresente, amortizacao, juros, valorAPagar]
+      properties:
+        valorParcelas:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Soma dos `valorParcela`."
+          example: 1873.78
+        desconto:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Soma dos `desconto`."
+          example: 299.41
+        valorPresente:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Soma dos `valorPresente`."
+          example: 1574.37
+        amortizacao:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Soma das `amortizacao`."
+          example: 1574.37
+        juros:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Soma dos `juros` pro rata."
+          example: 0
+        valorAPagar:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Total a pagar pela antecipação, igual ao `valorPresente`."
+          example: 1574.37
+
+    SimulacaoAmortizacao:
+      type: object
+      required: [numeroOperacao, dataReferencia, quantidadeParcelas, parcelas, totais, saldoDevedorAntes, saldoDevedorApos, quantidadeParcelasRestantes]
+      properties:
+        numeroOperacao:
+          type: string
+          example: OP-2026-0001
+        dataReferencia:
+          type: string
+          format: date
+          example: "2026-12-30"
+        quantidadeParcelas:
+          type: integer
+          minimum: 1
+          example: 2
+        parcelas:
+          type: array
+          description: As parcelas que seriam antecipadas, da menor para a maior.
+          items:
+            $ref: "#/components/schemas/ParcelaAmortizada"
+        totais:
+          $ref: "#/components/schemas/TotaisAmortizacao"
+        saldoDevedorAntes:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Saldo devedor da operação antes da antecipação."
+          example: 8482.27
+        saldoDevedorApos:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Saldo devedor depois da antecipação: `saldoDevedorAntes − totais.amortizacao`."
+          example: 6907.9
+        quantidadeParcelasRestantes:
+          type: integer
+          minimum: 1
+          description: Parcelas que continuam em aberto depois da antecipação.
+          example: 8
+
+    AmortizacaoRequest:
+      type: object
+      required: [quantidadeParcelas]
+      properties:
+        quantidadeParcelas:
+          type: integer
+          minimum: 1
+          description: Quantas das últimas parcelas em aberto antecipar.
+          example: 2
+        dataPagamento:
+          type: string
+          format: date
+          description: Dia do pagamento, `YYYY-MM-DD`. Sem o campo, vale hoje (RN-09). Não pode ser futura, nem anterior à `dataLiberacao` ou ao último pagamento.
+          example: "2026-12-30"
+        identificadorPagamento:
+          type: string
+          maxLength: 50
+          description: Opcional. Chave de idempotência por operação; reenviar o mesmo devolve o registro já gravado.
+          example: PAG-2026-0003
+
+    AmortizacaoRegistrada:
+      type: object
+      required: [eventoId, tipo, numeroOperacao, dataPagamento, quantidadeParcelas, lancamentos, totais, saldoDevedorAntes, saldoDevedorApos, quantidadeParcelasRestantes]
+      properties:
+        eventoId:
+          type: integer
+          format: int64
+          example: 4
+        tipo:
+          type: string
+          enum: [AMORTIZACAO_ANTECIPADA]
+        numeroOperacao:
+          type: string
+          example: OP-2026-0001
+        identificadorPagamento:
+          type: string
+          description: Só aparece quando foi enviado na requisição.
+          example: PAG-2026-0003
+        dataPagamento:
+          type: string
+          format: date
+          example: "2026-12-30"
+        quantidadeParcelas:
+          type: integer
+          minimum: 1
+          example: 2
+        lancamentos:
+          type: array
+          description: Um lançamento por parcela quitada, da menor para a maior.
+          items:
+            $ref: "#/components/schemas/ParcelaAmortizada"
+        totais:
+          $ref: "#/components/schemas/TotaisAmortizacao"
+        saldoDevedorAntes:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Saldo devedor da operação antes da antecipação."
+          example: 8482.27
+        saldoDevedorApos:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Saldo devedor depois da antecipação: `saldoDevedorAntes − totais.amortizacao`."
+          example: 6907.9
+        quantidadeParcelasRestantes:
+          type: integer
+          minimum: 1
+          description: Parcelas que continuam em aberto. A tabela recalculada sai em `GET /operacoes/{identificador}/parcelas`.
+          example: 8
 
     EncargosParcela:
       type: object
