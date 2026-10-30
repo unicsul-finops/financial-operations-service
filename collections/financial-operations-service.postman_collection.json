@@ -2778,6 +2778,275 @@
           }
         }
       ]
+    },
+    {
+      "name": "Contrato #10 — amortização nas próximas parcelas",
+      "description": "Cenários do modo PROXIMAS da RN-17 para a implementação depois da aprovação do contrato.\n\nUsa a operação OP-2025-0014, com o calendário PRICE um ano antes. Rode a pasta inteira, na ordem, com a OP-2025-0014 ainda sem pagamentos (banco limpo).",
+      "item": [
+        {
+          "name": "Criar operação de teste OP-2025-0014",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201 ou 200\", function () { pm.expect([201, 200]).to.include(pm.response.code); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.numeroOperacao).to.equal(\"OP-2025-0014\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2025-0014\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2025-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\n      \"numero\": 1,\n      \"amortizacao\": 751.91,\n      \"juros\": 185,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 9248.09,\n      \"vencimento\": \"2025-11-30\",\n      \"diasCorridos\": 31\n    },\n    {\n      \"numero\": 2,\n      \"amortizacao\": 765.82,\n      \"juros\": 171.09,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 8482.27,\n      \"vencimento\": \"2025-12-30\",\n      \"diasCorridos\": 61\n    },\n    {\n      \"numero\": 3,\n      \"amortizacao\": 779.99,\n      \"juros\": 156.92,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 7702.28,\n      \"vencimento\": \"2026-02-01\",\n      \"diasCorridos\": 94\n    },\n    {\n      \"numero\": 4,\n      \"amortizacao\": 794.42,\n      \"juros\": 142.49,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 6907.86,\n      \"vencimento\": \"2026-03-01\",\n      \"diasCorridos\": 122\n    },\n    {\n      \"numero\": 5,\n      \"amortizacao\": 809.11,\n      \"juros\": 127.8,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 6098.75,\n      \"vencimento\": \"2026-03-30\",\n      \"diasCorridos\": 151\n    },\n    {\n      \"numero\": 6,\n      \"amortizacao\": 824.08,\n      \"juros\": 112.83,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 5274.67,\n      \"vencimento\": \"2026-04-30\",\n      \"diasCorridos\": 182\n    },\n    {\n      \"numero\": 7,\n      \"amortizacao\": 839.33,\n      \"juros\": 97.58,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 4435.34,\n      \"vencimento\": \"2026-05-31\",\n      \"diasCorridos\": 213\n    },\n    {\n      \"numero\": 8,\n      \"amortizacao\": 854.86,\n      \"juros\": 82.05,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 3580.48,\n      \"vencimento\": \"2026-06-30\",\n      \"diasCorridos\": 243\n    },\n    {\n      \"numero\": 9,\n      \"amortizacao\": 870.67,\n      \"juros\": 66.24,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 2709.81,\n      \"vencimento\": \"2026-07-30\",\n      \"diasCorridos\": 273\n    },\n    {\n      \"numero\": 10,\n      \"amortizacao\": 886.78,\n      \"juros\": 50.13,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 1823.03,\n      \"vencimento\": \"2026-08-30\",\n      \"diasCorridos\": 304\n    },\n    {\n      \"numero\": 11,\n      \"amortizacao\": 903.18,\n      \"juros\": 33.73,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 919.85,\n      \"vencimento\": \"2026-09-30\",\n      \"diasCorridos\": 335\n    },\n    {\n      \"numero\": 12,\n      \"amortizacao\": 919.85,\n      \"juros\": 17.02,\n      \"valor\": 936.87,\n      \"saldoDevedor\": 0,\n      \"vencimento\": \"2026-11-01\",\n      \"diasCorridos\": 367\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Paga a parcela 1 em dia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", function () { pm.expect(pm.response.code).to.equal(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/parcelas/1/pagamentos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 936.91,\n  \"dataPagamento\": \"2025-11-30\",\n  \"identificadorPagamento\": \"col-14-p1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Paga a parcela 2 em dia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", function () { pm.expect(pm.response.code).to.equal(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/parcelas/2/pagamentos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 936.91,\n  \"dataPagamento\": \"2025-12-30\",\n  \"identificadorPagamento\": \"col-14-p2\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Simulação nas últimas, o padrão (RN-17)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.modo).to.equal(\"ULTIMAS\");",
+                  "  pm.expect(body.totais.valorAPagar).to.equal(1574.37);",
+                  "  pm.expect(body.totais.desconto).to.equal(299.41);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2025-12-30",
+            "description": ""
+          }
+        },
+        {
+          "name": "Simulação nas próximas (modo PROXIMAS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.modo).to.equal(\"PROXIMAS\");",
+                  "  pm.expect(body.parcelas.map(p => p.numero)).to.eql([3, 4]);",
+                  "  pm.expect(body.totais.valorAPagar).to.equal(1823.07);",
+                  "  pm.expect(body.totais.desconto).to.equal(50.75);",
+                  "  pm.expect(body.saldoDevedorApos).to.equal(6659.2);",
+                  "  pm.expect(body.quantidadeParcelasRestantes).to.equal(8);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/amortizacoes/simulacao?quantidadeParcelas=2&modo=PROXIMAS&dataReferencia=2025-12-30",
+            "description": ""
+          }
+        },
+        {
+          "name": "Modo inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"mensagem de erro\", function () { pm.expect(pm.response.json().erro).to.equal(\"modo deve ser ULTIMAS ou PROXIMAS\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/amortizacoes/simulacao?quantidadeParcelas=2&modo=TODAS&dataReferencia=2025-12-30",
+            "description": ""
+          }
+        },
+        {
+          "name": "Registra a amortização nas próximas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.modo).to.equal(\"PROXIMAS\");",
+                  "  pm.expect(body.totais.valorAPagar).to.equal(1823.07);",
+                  "  pm.expect(body.saldoDevedorApos).to.equal(6659.2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/amortizacoes",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantidadeParcelas\": 2,\n  \"modo\": \"PROXIMAS\",\n  \"dataPagamento\": \"2025-12-30\",\n  \"identificadorPagamento\": \"col-14-amort\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reenvio da amortização (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.modo).to.equal(\"PROXIMAS\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/amortizacoes",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantidadeParcelas\": 2,\n  \"modo\": \"PROXIMAS\",\n  \"dataPagamento\": \"2025-12-30\",\n  \"identificadorPagamento\": \"col-14-amort\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Parcelas depois da amortização",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body[2].status).to.equal(\"PAGA\");",
+                  "  pm.expect(body[3].status).to.equal(\"PAGA\");",
+                  "  pm.expect(body[4].status).to.equal(\"PENDENTE\");",
+                  "  pm.expect(body[4].juros).to.equal(376.47);",
+                  "  pm.expect(body[11].saldoDevedor).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0014/parcelas?dataReferencia=2025-12-30",
+            "description": ""
+          }
+        }
+      ]
     }
   ],
   "variable": [

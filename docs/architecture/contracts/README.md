@@ -329,7 +329,7 @@ Em `2026-12-30`, dia do vencimento da parcela 2, o valor para quitar é `8482.27
 
 ## `GET /operacoes/:identificador/amortizacoes/simulacao`
 
-Simula a antecipação das **últimas** `quantidadeParcelas` parcelas em aberto, sem gravar nada ([RN-16](../../requirements/regras-de-negocio-fase-2.md#rn-16-valor-presente) e [RN-17](../../requirements/regras-de-negocio-fase-2.md#rn-17-amortização-antecipada-parcial)):
+Simula a antecipação de `quantidadeParcelas` parcelas em aberto, sem gravar nada, nas **últimas** (`modo=ULTIMAS`, o padrão) ou nas **próximas** a vencer (`modo=PROXIMAS`) ([RN-16](../../requirements/regras-de-negocio-fase-2.md#rn-16-valor-presente) e [RN-17](../../requirements/regras-de-negocio-fase-2.md#rn-17-amortização-antecipada-parcial)):
 
 ```text
 GET /operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2026-12-30
@@ -338,6 +338,7 @@ GET /operacoes/OP-2026-0001/amortizacoes/simulacao?quantidadeParcelas=2&dataRefe
 | Query | Obrigatória | Descrição |
 | --- | --- | --- |
 | `quantidadeParcelas` | sim | Inteiro maior que zero, menor que o total de parcelas em aberto. |
+| `modo` | não | `ULTIMAS` (padrão) ou `PROXIMAS`. Aceita minúsculas. |
 | `dataReferencia` | não | `YYYY-MM-DD`, GMT-03:00. Sem ela, vale hoje. |
 
 Cada parcela entra pelo valor presente, `valorParcela / (1 + i) ^ (k − f)`. No meio de um período o valor presente se divide em `amortizacao` (principal) e `juros` (pro rata do período em curso); no dia de um vencimento `juros` é `0`. A parcela que vence na própria `dataReferencia` entra pelo valor em aberto, sem desconto. `desconto = valorParcela − valorPresente`, e a diferença de centavos do arredondamento fica na última parcela da lista.
@@ -366,7 +367,7 @@ Responde `400` com parcela vencida em aberto, com parcela `PARCIALMENTE_PAGA`, c
 
 ## `POST /operacoes/:identificador/amortizacoes`
 
-Quita as últimas `quantidadeParcelas` parcelas em aberto, com a mesma conta da simulação:
+Quita `quantidadeParcelas` parcelas em aberto, com a mesma conta da simulação:
 
 ```json
 {
@@ -379,14 +380,30 @@ Quita as últimas `quantidadeParcelas` parcelas em aberto, com a mesma conta da 
 | Campo | Tipo | Obrigatório | Descrição |
 | --- | --- | --- | --- |
 | `quantidadeParcelas` | inteiro | sim | Maior que zero, menor que o total de parcelas em aberto. |
+| `modo` | texto | não | `ULTIMAS` (padrão) ou `PROXIMAS`. Aceita minúsculas. |
 | `dataPagamento` | data | não | `YYYY-MM-DD`. Sem o campo, vale hoje. Não pode ser futura, nem anterior à `dataLiberacao` ou ao último pagamento (RN-09). |
 | `identificadorPagamento` | texto | não | Até 50 caracteres. Chave de idempotência por operação. |
 
 - `201 Created` com o header `Location: /operacoes/OP-2026-0001`, ou `200 OK` no reenvio do mesmo `identificadorPagamento`, sem gravar de novo.
 - Grava o evento `AMORTIZACAO_ANTECIPADA` com **um lançamento por parcela quitada** (`amortizacao`, `juros` pro rata e `desconto`) e recalcula as parcelas que restam, com saldo `0` na última. A tabela atualizada está em `GET /operacoes/:identificador/parcelas`.
-- A resposta traz `eventoId`, `tipo`, `lancamentos` (mesmo formato das `parcelas` da simulação), `totais`, `saldoDevedorAntes`, `saldoDevedorApos` e `quantidadeParcelasRestantes`.
+- A resposta traz `eventoId`, `tipo`, `modo`, `lancamentos` (mesmo formato das `parcelas` da simulação), `totais`, `saldoDevedorAntes`, `saldoDevedorApos` e `quantidadeParcelasRestantes`.
 - Mesmas regras de `400` da simulação.
 
+
+### Modo `PROXIMAS`
+
+O `modo` escolhe quais parcelas a amortização quita. `ULTIMAS` (o padrão, e o comportamento de antes) quita o fim do calendário: reduz o prazo e dá mais desconto. `PROXIMAS` quita as **primeiras** em aberto, que estão mais perto do vencimento e têm bem menos desconto, o que é melhor para o negócio.
+
+Em 30/12/2026, com as parcelas 1 e 2 pagas, antecipando 2 parcelas:
+
+| `modo` | Parcelas quitadas | Total a pagar | Desconto | Saldo devedor depois |
+| --- | --- | --- | --- | --- |
+| `ULTIMAS` | 11 e 12 | 1.574,37 | 299,41 | 6.907,90 |
+| `PROXIMAS` | 3 e 4 | 1.823,07 | 50,75 | 6.659,20 |
+
+- No `PROXIMAS`, as parcelas 5 a 12 continuam com valor e vencimento. A parcela 5 só vence três períodos depois da data, então o `juros` dela é o de todos eles sobre o saldo (376,47, e 560,44 de amortização); as parcelas 6 a 12 seguem o calendário original, com diferença de centavos, e o saldo termina em `0` na última.
+- As recusas de `400` são as mesmas nos dois modos (parcela vencida em aberto, `PARCIALMENTE_PAGA`, quantidade que cobre todas as parcelas).
+- Um `modo` diferente de `ULTIMAS` e `PROXIMAS` responde `400` com `modo deve ser ULTIMAS ou PROXIMAS`.
 
 ## `GET /operacoes/:identificador/resumo`
 
@@ -564,6 +581,7 @@ Mensagens da simulação e da amortização antecipada (os números mudam confor
 | --- |
 | `quantidadeParcelas é obrigatório` |
 | `quantidadeParcelas deve ser um inteiro maior que zero` |
+| `modo deve ser ULTIMAS ou PROXIMAS` |
 | `dataReferencia deve estar no formato YYYY-MM-DD` |
 | `dataReferencia não pode ser anterior à data do último pagamento (2026-12-30)` |
 | `dataPagamento deve estar no formato YYYY-MM-DD` |
