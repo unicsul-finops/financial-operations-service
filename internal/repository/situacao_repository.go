@@ -60,8 +60,38 @@ func (r *OperacaoRepository) ConsultarSituacao(id int64, numero string) (domain.
 	if err := rows.Close(); err != nil {
 		return domain.Operacao{}, nil, "", err
 	}
+	if err := anexarLancamentos(tx, operacao.ID, parcelas); err != nil {
+		return domain.Operacao{}, nil, "", err
+	}
 	if err := tx.Commit(); err != nil {
 		return domain.Operacao{}, nil, "", err
 	}
 	return operacao, parcelas, ultimaData, nil
+}
+
+// só os lançamentos por parcela entram nos encargos: o da operação, na liquidação, não tem parcela.
+func anexarLancamentos(tx *sql.Tx, operacaoID int64, parcelas []domain.Parcela) error {
+	rows, err := tx.Query(`SELECT l.numero_parcela, to_char(e.data_efeito, 'YYYY-MM-DD'),
+  l.multa, l.juros_mora, l.juros, l.amortizacao, l.desconto
+  FROM lancamento l JOIN evento e ON e.id = l.evento_id
+  WHERE l.operacao_id = $1 AND l.numero_parcela IS NOT NULL
+  ORDER BY e.data_efeito, l.id`, operacaoID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	indice := map[int]int{}
+	for i, p := range parcelas {
+		indice[p.Numero] = i
+	}
+	for rows.Next() {
+		var l domain.LancamentoParcela
+		if err := rows.Scan(&l.NumeroParcela, &l.Data, &l.Multa, &l.JurosMora, &l.Juros, &l.Amortizacao, &l.Desconto); err != nil {
+			return err
+		}
+		if i, ok := indice[l.NumeroParcela]; ok {
+			parcelas[i].Lancamentos = append(parcelas[i].Lancamentos, l)
+		}
+	}
+	return rows.Err()
 }

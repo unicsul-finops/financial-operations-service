@@ -63,11 +63,19 @@ func calcularSituacaoParcela(parcela domain.Parcela, referencia time.Time) (doma
 	}
 	parcela.DiasEmAtraso = 0
 	parcela.ValorEmAberto = decimal.Zero
+	parcela.MultaEmAberto, parcela.MoraEmAberto, parcela.TotalParaQuitar = decimal.Zero, decimal.Zero, decimal.Zero
 	if parcela.Status == domain.StatusParcelaPaga {
 		return parcela, nil
 	}
 	parcela.ValorEmAberto = parcela.Juros.Add(parcela.Amortizacao).
 		Sub(parcela.JurosPagos).Sub(parcela.AmortizacaoPaga).Sub(parcela.DescontoConcedido)
+	encargos, err := calcularEncargos(parcela, parcela.Lancamentos, referencia)
+	if err != nil {
+		return domain.Parcela{}, err
+	}
+	parcela.MultaEmAberto = encargos.multaEmAberto
+	parcela.MoraEmAberto = encargos.moraEmAberto
+	parcela.TotalParaQuitar = encargos.totalParaQuitar()
 	if parcela.ValorEmAberto.IsPositive() && referencia.After(vencimento) {
 		parcela.DiasEmAtraso = int((referencia.Unix() - vencimento.Unix()) / 86400)
 		parcela.Status = domain.StatusParcelaVencida
