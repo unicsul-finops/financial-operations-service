@@ -158,3 +158,13 @@ func (h *OperacaoHandler) ConsultarResumo(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, resumo)
 }
+
+// GET /operacoes/:identificador/historico - eventos gravados e entradas calculadas, em ordem cronológica (RN-21).
+func (h *OperacaoHandler) ConsultarHistorico(c *gin.Context) {
+	itens, err := h.service.ConsultarHistorico(c.Param("identificador"), dataReferenciaQuery(c))
+	if err != nil {
+		responderErro(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, itens)
+}

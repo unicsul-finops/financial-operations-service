@@ -181,3 +181,62 @@ func carregarCarteira(tx *sql.Tx, id int64, numero string, travar bool) (domain.
 	}
 	return carteira, rows.Err()
 }
+
+// eventos e lançamentos da operação no mesmo retrato da carteira, pra situação calculada não destoar do que foi gravado.
+func (r *OperacaoRepository) ConsultarHistorico(id int64, numero string) (domain.Historico, error) {
+	tx, err := r.db.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err != nil {
+		return domain.Historico{}, err
+	}
+	defer tx.Rollback()
+
+	carteira, err := carregarCarteira(tx, id, numero, false)
+	if err != nil {
+		return domain.Historico{}, err
+	}
+	historico := domain.Historico{Carteira: carteira, Eventos: []domain.EventoHistorico{}}
+	operacaoID := carteira.Operacao.ID
+
+	rows, err := tx.Query(`SELECT e.id, e.tipo, to_char(e.data_efeito, 'YYYY-MM-DD'),
+  to_char(e.registrado_em AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), e.valor,
+  COALESCE(e.identificador_externo, ''), COALESCE(e.origem, '')
+  FROM evento e WHERE e.operacao_id = $1 ORDER BY e.data_efeito, e.id`, operacaoID)
+	if err != nil {
+		return domain.Historico{}, err
+	}
+	indice := map[int64]int{}
+	for rows.Next() {
+		var e domain.EventoHistorico
+		if err := rows.Scan(&e.ID, &e.Tipo, &e.DataEfeito, &e.RegistradoEm, &e.Valor, &e.IdentificadorPagamento, &e.Origem); err != nil {
+			rows.Close()
+			return domain.Historico{}, err
+		}
+		e.Lancamentos = []domain.LancamentoEvento{}
+		indice[e.ID] = len(historico.Eventos)
+		historico.Eventos = append(historico.Eventos, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return domain.Historico{}, err
+	}
+
+	rows, err = tx.Query(`SELECT evento_id, COALESCE(numero_parcela, 0), multa, juros_mora, juros, amortizacao, desconto
+  FROM lancamento WHERE operacao_id = $1 ORDER BY id`, operacaoID)
+	if err != nil {
+		return domain.Historico{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eventoID int64
+		var l domain.LancamentoEvento
+		if err := rows.Scan(&eventoID, &l.NumeroParcela, &l.Multa, &l.JurosMora, &l.Juros, &l.Amortizacao, &l.Desconto); err != nil {
+			return domain.Historico{}, err
+		}
+		i := indice[eventoID]
+		historico.Eventos[i].Lancamentos = append(historico.Eventos[i].Lancamentos, l)
+	}
+	if err := rows.Err(); err != nil {
+		return domain.Historico{}, err
+	}
+	return historico, tx.Commit()
+}

@@ -253,3 +253,63 @@ type Resumo struct {
 	SaldoDevedor        decimal.Decimal `json:"saldoDevedor"`
 	ValorParaQuitar     decimal.Decimal `json:"valorParaQuitar"`
 }
+
+const (
+	EventoOperacaoRegistrada = "OPERACAO_REGISTRADA"
+
+	// itens calculados do histórico (RN-21): não são gravados, saem da situação na dataReferencia.
+	ItemParcelaVencida       = "PARCELA_VENCIDA"
+	ItemOperacaoInadimplente = "OPERACAO_INADIMPLENTE"
+
+	OrigemRegistrado = "REGISTRADO"
+	OrigemCalculado  = "CALCULADO"
+)
+
+// evento gravado como o banco devolve, com os lançamentos dele.
+type EventoHistorico struct {
+	ID                     int64
+	Tipo                   string
+	DataEfeito             string
+	RegistradoEm           string
+	Valor                  decimal.NullDecimal
+	IdentificadorPagamento string
+	Origem                 string
+	Lancamentos            []LancamentoEvento
+}
+
+// NumeroParcela zero é o lançamento da operação, sem parcela (RN-18).
+type LancamentoEvento struct {
+	NumeroParcela int
+	Distribuicao
+	Desconto decimal.Decimal
+}
+
+type Historico struct {
+	Carteira Carteira
+	Eventos  []EventoHistorico
+}
+
+type LancamentoItem struct {
+	NumeroParcela *int            `json:"numeroParcela"`
+	Multa         decimal.Decimal `json:"multa"`
+	JurosMora     decimal.Decimal `json:"jurosMora"`
+	Juros         decimal.Decimal `json:"juros"`
+	Amortizacao   decimal.Decimal `json:"amortizacao"`
+	Desconto      decimal.Decimal `json:"desconto"`
+}
+
+// item do histórico: um evento gravado (REGISTRADO) ou uma entrada calculada na dataReferencia (CALCULADO).
+// id, registradoEm, valor, identificadorPagamento e origemPagamento só existem nos itens gravados que os têm.
+type ItemHistorico struct {
+	ID                     int64            `json:"id,omitempty"`
+	Tipo                   string           `json:"tipo"`
+	Origem                 string           `json:"origem"`
+	DataEfeito             string           `json:"dataEfeito"`
+	RegistradoEm           string           `json:"registradoEm,omitempty"`
+	Valor                  *decimal.Decimal `json:"valor,omitempty"`
+	IdentificadorPagamento string           `json:"identificadorPagamento,omitempty"`
+	OrigemPagamento        string           `json:"origemPagamento,omitempty"`
+	NumeroParcela          *int             `json:"numeroParcela,omitempty"`
+	Lancamentos            []LancamentoItem `json:"lancamentos"`
+	Descricao              string           `json:"descricao,omitempty"`
+}

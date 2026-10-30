@@ -265,6 +265,12 @@ func (r *OperacaoRepository) CriarComParcelas(nova domain.NovaOperacao) (domain.
 		}
 	}
 
+	// RN-21: o registro é o primeiro evento do histórico, na mesma transação da operação. não movimenta dinheiro.
+	if _, err := tx.Exec(`INSERT INTO evento (operacao_id, tipo, data_efeito) VALUES ($1, $2, $3::date)`,
+		operacao.ID, domain.EventoOperacaoRegistrada, nova.DataLiberacao); err != nil {
+		return domain.Operacao{}, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return domain.Operacao{}, err
 	}
