@@ -44,6 +44,8 @@ var rotasSoNoContrato = map[string]bool{
 	"GET /operacoes/{identificador}/amortizacoes/simulacao":        true,
 	"POST /operacoes/{identificador}/amortizacoes":                 true,
 	"POST /operacoes/{identificador}/parcelas/{numero}/pagamentos": true,
+	"GET /operacoes/{identificador}/liquidacao":                    true,
+	"POST /operacoes/{identificador}/liquidacao":                   true,
 }
 
 // se alguém criar ou remover uma rota sem atualizar o openapi.yaml, este teste quebra.
