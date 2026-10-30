@@ -22,6 +22,7 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `GET` | `/operacoes` | Lista as operações (sem as parcelas) | `200` |
 | `GET` | `/operacoes/:identificador` | Consulta a situação na `dataReferencia` (opcional) | `200` |
 | `GET` | `/operacoes/:identificador/parcelas` | Consulta parcelas, atraso e encargos na `dataReferencia` (opcional) | `200` |
+| `POST` | `/operacoes/:identificador/parcelas/:numero/pagamentos` | Registra o pagamento de uma parcela (RN-14) | `201` (novo) / `200` (reenvio) |
 | `GET` | `/operacoes/:identificador/amortizacoes/simulacao` | Simula a antecipação das últimas parcelas | `200` |
 | `POST` | `/operacoes/:identificador/amortizacoes` | Registra a antecipação das últimas parcelas | `201` (nova) / `200` (reenvio) |
 
@@ -250,6 +251,40 @@ Os erros de referência inválida ou anterior à última movimentação são os 
 
 A pasta Contrato #7 da coleção contém dois pedidos sem pagamento e respostas salvas para pagamento parcial e PAGA. Respostas salvas são exemplos do contrato, não evidência de execução. O cenário parcial exige preparar os lançamentos da RN-14; registrar pagamento pertence à #9. Os campos novos só funcionarão após aprovação do contrato e implementação em PR posterior.
 
+## `POST /operacoes/:identificador/parcelas/:numero/pagamentos`
+
+Pagamento de uma parcela (RN-14, RN-15 e RN-19). Só as vencidas e a próxima a vencer aceitam pagamento. O valor abate multa → mora → juros → amortização, e o saldo devedor cai só pela amortização.
+
+```json
+{ "valor": 500, "dataPagamento": "2026-12-10", "identificadorPagamento": "app-7f3a91", "origem": "CLIENTE" }
+```
+
+| Campo | Obrigatório | Regra |
+| --- | --- | --- |
+| `valor` | sim | Maior que zero, até 2 casas, no máximo o total para quitar a parcela na data (valor em aberto + encargos). |
+| `dataPagamento` | não | `YYYY-MM-DD`; omitida, vale hoje. Não pode ser futura, anterior à `dataLiberacao` nem à última movimentação (RN-09). |
+| `identificadorPagamento` | não | Até 50 caracteres. Repetido na operação = reenvio: `200` com o pagamento já gravado. |
+| `origem` | não | Até 30 caracteres, texto livre. Só vai para o histórico. |
+
+Resposta `201` (com `Location: /operacoes/OP-2026-0001/historico`) ou `200` no reenvio, com o mesmo corpo:
+
+```json
+{
+  "id": 2,
+  "dataPagamento": "2026-12-10",
+  "valor": 500,
+  "identificadorPagamento": "app-7f3a91",
+  "origem": "CLIENTE",
+  "distribuicao": { "multa": 18.74, "jurosMora": 3.12, "juros": 185, "amortizacao": 293.14 },
+  "parcela": { "numero": 1, "status": "PARCIALMENTE_PAGA", "valorEmAberto": 458.77, "encargosEmAberto": 0 },
+  "operacao": { "numeroOperacao": "OP-2026-0001", "status": "EM_ATRASO", "saldoDevedor": 9706.86 },
+  "registradoEm": "2026-12-10T13:20:05Z"
+}
+```
+
+- `parcela.status` é o gravado (`PARCIALMENTE_PAGA` ou `PAGA`); na consulta de parcelas, uma parcial ainda vencida aparece como `VENCIDA` (RN-11).
+- `operacao.status` é calculado na `dataPagamento`. Quitar a última parcela em aberto deixa a operação `LIQUIDADA` e grava também um evento `LIQUIDACAO` sem valor (RN-19).
+
 ## `GET /operacoes/:identificador/amortizacoes/simulacao`
 
 Simula a antecipação das **últimas** `quantidadeParcelas` parcelas em aberto, sem gravar nada ([RN-16](../../requirements/regras-de-negocio-fase-2.md#rn-16-valor-presente) e [RN-17](../../requirements/regras-de-negocio-fase-2.md#rn-17-amortização-antecipada-parcial)):
@@ -343,7 +378,9 @@ Todos os erros têm o formato:
 | `400` | Regra de validação violada | `apenas operações com operacao.estado DEFINIDA podem ser registradas` |
 | `400` | `:identificador` que não é número de operação nem id | `identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)` |
 | `400` | `dataReferencia` fora do formato | `dataReferencia deve estar no formato YYYY-MM-DD` |
+| `400` | `:numero` da parcela que não é inteiro a partir de 1 | `numero da parcela inválido, use um inteiro a partir de 1` |
 | `404` | Operação não existe | `operação não encontrada` |
+| `404` | Parcela não existe na operação | `parcela não encontrada` |
 | `404` | Rota que não existe | `rota não encontrada` |
 | `405` | Método não aceito numa rota que existe (ex.: `DELETE /operacoes/1`). O header `Allow` traz os métodos aceitos. | `método não permitido nesta rota` |
 
@@ -388,6 +425,26 @@ Mensagens de validação do `POST /operacoes`:
 | `calendario: soma das amortizações X diferente de condicoes.valor Y` |
 | `resumo.totalJuros deve ser a soma dos juros do calendario` |
 | `resumo.totalPago deve ser a soma do valor das parcelas do calendario` |
+
+Mensagens do pagamento de parcela:
+
+| Mensagem |
+| --- |
+| `valor é obrigatório` |
+| `valor deve ser maior que zero` |
+| `valor deve ter no máximo 2 casas decimais` |
+| `dataPagamento deve estar no formato YYYY-MM-DD` |
+| `dataPagamento não pode ser futura` |
+| `dataPagamento não pode ser anterior à dataLiberacao da operação` |
+| `dataPagamento não pode ser anterior à data da última movimentação financeira da operação` |
+| `identificadorPagamento não pode ser vazio` |
+| `identificadorPagamento deve ter no máximo 50 caracteres` |
+| `origem deve ter no máximo 30 caracteres` |
+| `a operação está liquidada e não aceita mais pagamentos` |
+| `parcela N já está paga` |
+| `a parcela N ainda não pode ser paga, só as vencidas e a próxima a vencer` |
+| `valor maior que o total para quitar a parcela N em YYYY-MM-DD, que é X` |
+| `identificadorPagamento já foi usado em outra movimentação da operação` |
 
 Mensagens da simulação e da amortização antecipada (os números mudam conforme a operação):
 
