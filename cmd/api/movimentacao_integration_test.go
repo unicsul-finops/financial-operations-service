@@ -40,7 +40,7 @@ func TestMovimentacaoIntegracao(t *testing.T) {
 	anterior := decimal.MarshalJSONWithoutQuotes
 	decimal.MarshalJSONWithoutQuotes = true
 	t.Cleanup(func() { decimal.MarshalJSONWithoutQuotes = anterior })
-	router := novoRouter(handler.NovoOperacaoHandler(service.NovoOperacaoService(repository.NovoOperacaoRepository(db))))
+	router := novoRouter(handler.NovoOperacaoHandler(service.NovoOperacaoService(repository.NovoOperacaoRepository(db))), nil)
 	request := func(method, path, body string) (*httptest.ResponseRecorder, map[string]any) {
 		t.Helper()
 		w := httptest.NewRecorder()

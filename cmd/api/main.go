@@ -33,7 +33,7 @@ func main() {
 	operacaoService := service.NovoOperacaoService(repo)
 	operacaoHandler := handler.NovoOperacaoHandler(operacaoService)
 
-	router := novoRouter(operacaoHandler)
+	router := novoRouter(operacaoHandler, cfg.CorsOrigens)
 
 	log.Printf("financial-operations-service ouvindo na porta %s", cfg.Porta)
 	log.Printf("painel em http://localhost:%s/", cfg.Porta)
@@ -45,8 +45,11 @@ func main() {
 }
 
 // separado do main pra o teste conseguir conferir se toda rota está documentada no openapi.yaml.
-func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
+func novoRouter(operacaoHandler *handler.OperacaoHandler, origensCORS []string) *gin.Engine {
 	router := gin.Default()
+
+	// antes das rotas, pra valer também no preflight e nos 404 e 405.
+	router.Use(handler.CORS(origensCORS))
 
 	// sem isso o gin responde 404 pra método errado numa rota que existe.
 	router.HandleMethodNotAllowed = true
