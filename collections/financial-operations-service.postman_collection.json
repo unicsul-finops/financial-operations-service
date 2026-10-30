@@ -1348,7 +1348,21 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/operacoes/OP-2026-0001/parcelas?dataReferencia=2026-12-10"
+            "url": {
+              "raw": "{{baseUrl}}/operacoes?dataReferencia=hoje",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "operacoes"
+              ],
+              "query": [
+                {
+                  "key": "dataReferencia",
+                  "value": "hoje"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -1407,26 +1421,7 @@
               ],
               "body": "[\n  {\n    \"numero\": 1,\n    \"vencimento\": \"2026-11-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 751.91,\n    \"juros\": 185,\n    \"saldoDevedor\": 9248.09,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 2,\n    \"vencimento\": \"2026-12-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 765.82,\n    \"juros\": 171.09,\n    \"saldoDevedor\": 8482.27,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 3,\n    \"vencimento\": \"2027-02-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 779.99,\n    \"juros\": 156.92,\n    \"saldoDevedor\": 7702.28,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 4,\n    \"vencimento\": \"2027-03-01\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 794.42,\n    \"juros\": 142.49,\n    \"saldoDevedor\": 6907.86,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 5,\n    \"vencimento\": \"2027-03-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 809.11,\n    \"juros\": 127.8,\n    \"saldoDevedor\": 6098.75,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 6,\n    \"vencimento\": \"2027-04-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 824.08,\n    \"juros\": 112.83,\n    \"saldoDevedor\": 5274.67,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 7,\n    \"vencimento\": \"2027-05-31\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 839.33,\n    \"juros\": 97.58,\n    \"saldoDevedor\": 4435.34,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 8,\n    \"vencimento\": \"2027-06-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 854.86,\n    \"juros\": 82.05,\n    \"saldoDevedor\": 3580.48,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 9,\n    \"vencimento\": \"2027-07-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 870.67,\n    \"juros\": 66.24,\n    \"saldoDevedor\": 2709.81,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 10,\n    \"vencimento\": \"2027-08-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 886.78,\n    \"juros\": 50.13,\n    \"saldoDevedor\": 1823.03,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 11,\n    \"vencimento\": \"2027-09-30\",\n    \"valorParcela\": 936.91,\n    \"amortizacao\": 903.18,\n    \"juros\": 33.73,\n    \"saldoDevedor\": 919.85,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  },\n  {\n    \"numero\": 12,\n    \"vencimento\": \"2027-11-01\",\n    \"valorParcela\": 936.87,\n    \"amortizacao\": 919.85,\n    \"juros\": 17.02,\n    \"saldoDevedor\": 0,\n    \"status\": \"PAGA\",\n    \"valorEmAberto\": 0,\n    \"diasEmAtraso\": 0,\n    \"encargos\": {\n      \"multa\": 0,\n      \"jurosMora\": 0,\n      \"total\": 0\n    },\n    \"totalParaQuitar\": 0\n  }\n]"
             }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/operacoes?dataReferencia=hoje",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "operacoes"
-              ],
-              "query": [
-                {
-                  "key": "dataReferencia",
-                  "value": "hoje"
-                }
-              ]
-            }
-          }
+          ]
         },
         {
           "name": "Simulação sem quantidadeParcelas (400)",
@@ -1755,18 +1750,6 @@
           }
         }
       ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8083",
-      "type": "string"
-    },
-    {
-      "key": "operacaoId",
-      "value": "",
-      "type": "string"
     },
     {
       "name": "Contrato #9 — pagamento de parcela",
@@ -2388,6 +2371,18 @@
           }
         }
       ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8083",
+      "type": "string"
+    },
+    {
+      "key": "operacaoId",
+      "value": "",
+      "type": "string"
     }
   ]
 }
