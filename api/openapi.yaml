@@ -986,6 +986,56 @@ paths:
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
+  /operacoes/{identificador}/historico:
+    get:
+      tags: [Operações]
+      summary: Consulta o histórico de eventos da operação
+      description: |
+        RN-21. Os eventos gravados da operação (registro, pagamentos, amortizações e liquidação) e, na data de referência, o atraso e a inadimplência calculados, em ordem cronológica. O mais antigo vem primeiro; no mesmo dia, o gravado vem antes do calculado.
+
+        Cada item tem `origem`: `REGISTRADO` para um evento gravado, que nunca é alterado, e `CALCULADO` para uma entrada que sai da situação na `dataReferencia` (RN-11) e não é gravada:
+
+        - `PARCELA_VENCIDA`: no dia seguinte ao vencimento de uma parcela que esteve em atraso na data (ainda em aberto ou quitada depois do vencimento);
+        - `OPERACAO_INADIMPLENTE`: no 91º dia de atraso de alguma parcela (RN-12).
+
+        Os itens gravados trazem `id`, `registradoEm` (UTC) e os lançamentos do evento, com `numeroParcela` nulo no lançamento da operação (parcelas a vencer na liquidação). `valor` só existe nos eventos que movimentam dinheiro; `identificadorPagamento` e `origemPagamento` só quando foram enviados. A `origem` do pagamento (`CLIENTE`, `INSS`…) sai em `origemPagamento` para não se confundir com a `origem` do item.
+
+        A data tem as regras da consulta da operação (RN-09): não pode ser anterior à última movimentação financeira.
+      operationId: consultarHistorico
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+        - $ref: "#/components/parameters/DataReferencia"
+      responses:
+        "200":
+          description: Itens do histórico, em ordem cronológica.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemHistorico"
+              examples:
+                aposPagamentoParcial:
+                  $ref: "#/components/examples/HistoricoAposPagamentoParcial"
+        "400":
+          description: Identificador ou data inválidos (RN-09).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                identificadorInvalido:
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                dataReferenciaInvalida:
+                  value:
+                    erro: dataReferencia deve estar no formato YYYY-MM-DD
+                dataReferenciaAnterior:
+                  value:
+                    erro: dataReferencia não pode ser anterior à data da última movimentação financeira da operação
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
 components:
   parameters:
     IdentificadorOperacao:
@@ -1453,6 +1503,37 @@ components:
         encargosEmAberto: 0
         saldoDevedor: 9706.86
         valorParaQuitar: 9763.54
+
+    HistoricoAposPagamentoParcial:
+      summary: Registro, atraso calculado e pagamento parcial de 500,00 em 10/12/2026 (RN-14), consultado no mesmo dia
+      value:
+        - id: 1
+          tipo: OPERACAO_REGISTRADA
+          origem: REGISTRADO
+          dataEfeito: "2026-10-30"
+          registradoEm: "2026-10-08T18:13:02Z"
+          lancamentos: []
+        - tipo: PARCELA_VENCIDA
+          origem: CALCULADO
+          dataEfeito: "2026-12-01"
+          numeroParcela: 1
+          lancamentos: []
+          descricao: parcela 1 vencida em 2026-12-01
+        - id: 2
+          tipo: PAGAMENTO
+          origem: REGISTRADO
+          dataEfeito: "2026-12-10"
+          registradoEm: "2026-12-10T13:20:05Z"
+          valor: 500
+          identificadorPagamento: app-7f3a91
+          origemPagamento: CLIENTE
+          lancamentos:
+            - numeroParcela: 1
+              multa: 18.74
+              jurosMora: 3.12
+              juros: 185
+              amortizacao: 293.14
+              desconto: 0
 
   responses:
     IdentificadorInvalido:
@@ -2483,3 +2564,94 @@ components:
             - $ref: "#/components/schemas/Dinheiro"
           description: "Valor da liquidação na data de referência (RN-18). `0` em operação `LIQUIDADA`."
           example: 9763.54
+
+    LancamentoHistorico:
+      type: object
+      description: Para onde foi o dinheiro de um evento, por parcela e por componente (RN-13, RN-14, RN-17 e RN-18).
+      required: [numeroParcela, multa, jurosMora, juros, amortizacao, desconto]
+      properties:
+        numeroParcela:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Parcela atingida. Nulo no lançamento da operação, que reúne as parcelas a vencer na liquidação (RN-18).
+          example: 1
+        multa:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          example: 18.74
+        jurosMora:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          example: 3.12
+        juros:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          example: 185
+        amortizacao:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          example: 293.14
+        desconto:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: Desconto da antecipação. Não é dinheiro recebido.
+          example: 0
+
+    ItemHistorico:
+      type: object
+      description: |
+        Um evento gravado (`REGISTRADO`) ou uma entrada calculada na `dataReferencia` (`CALCULADO`). `id`, `registradoEm` e `valor` só aparecem nos eventos gravados que os têm; `numeroParcela` e `descricao` só nos itens calculados.
+      required: [tipo, origem, dataEfeito, lancamentos]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Id do evento gravado.
+          example: 2
+        tipo:
+          type: string
+          enum: [OPERACAO_REGISTRADA, PAGAMENTO, AMORTIZACAO_ANTECIPADA, LIQUIDACAO, PARCELA_VENCIDA, OPERACAO_INADIMPLENTE]
+          example: PAGAMENTO
+        origem:
+          type: string
+          enum: [REGISTRADO, CALCULADO]
+          description: "`REGISTRADO` é um evento gravado e imutável; `CALCULADO` sai da situação na `dataReferencia` e não é gravado."
+          example: REGISTRADO
+        dataEfeito:
+          type: string
+          format: date
+          description: Dia em que o fato vale (a `dataPagamento`, nos pagamentos).
+          example: "2026-12-10"
+        registradoEm:
+          type: string
+          format: date-time
+          description: Momento do registro, em UTC. Só nos eventos gravados.
+          example: "2026-12-10T13:20:05Z"
+        valor:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: Dinheiro recebido no evento. Não existe no registro da operação nem no encerramento automático (RN-19).
+          example: 500
+        identificadorPagamento:
+          type: string
+          description: Só aparece quando foi enviado.
+          example: app-7f3a91
+        origemPagamento:
+          type: string
+          description: Quem pagou ou por onde (`CLIENTE`, `INSS`…). Só aparece quando foi enviada.
+          example: CLIENTE
+        numeroParcela:
+          type: integer
+          minimum: 1
+          description: Parcela do item calculado `PARCELA_VENCIDA`.
+          example: 1
+        lancamentos:
+          type: array
+          description: Distribuição do dinheiro do evento. `[]` nos itens sem dinheiro.
+          items:
+            $ref: "#/components/schemas/LancamentoHistorico"
+        descricao:
+          type: string
+          description: Texto do item calculado.
+          example: parcela 1 vencida em 2026-12-01
