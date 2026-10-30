@@ -796,6 +796,151 @@ paths:
                   value:
                     erro: parcela não encontrada
 
+  /operacoes/{identificador}/liquidacao:
+    get:
+      tags: [Operações]
+      summary: Consulta o valor para quitar a operação
+      description: |
+        RN-18 e RN-16. Valor para quitar na data de referência = parcelas vencidas em aberto com encargos (sem desconto) + parcelas a vencer pelo valor presente. Sem tarifa.
+        A parcela que vence no próprio dia entra em `aVencer` pelo valor em aberto, sem desconto nem encargos.
+        O valor presente de cada parcela é arredondado ao centavo e o total é a soma delas, como no exemplo da RN-17.
+        Operação `LIQUIDADA` não tem valor para quitar (`400`).
+      operationId: consultarLiquidacao
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+        - $ref: "#/components/parameters/DataReferencia"
+      responses:
+        "200":
+          description: Valor para quitar na data de referência.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValorLiquidacao"
+              examples:
+                diaDoVencimento:
+                  $ref: "#/components/examples/LiquidacaoNoVencimento"
+                meioDoPeriodo:
+                  $ref: "#/components/examples/LiquidacaoNoMeioDoPeriodo"
+        "400":
+          description: Identificador ou data inválidos (RN-09), ou operação já liquidada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                identificadorInvalido:
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                dataReferenciaInvalida:
+                  value:
+                    erro: dataReferencia deve estar no formato YYYY-MM-DD
+                dataReferenciaAnterior:
+                  value:
+                    erro: dataReferencia não pode ser anterior à data da última movimentação financeira da operação
+                operacaoLiquidada:
+                  value:
+                    erro: a operação já está liquidada
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
+    post:
+      tags: [Operações]
+      summary: Quita a operação antes do prazo
+      description: |
+        RN-18 e RN-19. O `valor` precisa ser igual ao valor para quitar na `dataPagamento` (o mesmo do `GET`), para não quitar com um número velho.
+        Depois: todas as parcelas `PAGA`, saldo devedor `0`, operação `LIQUIDADA`, evento `LIQUIDACAO`.
+        As vencidas viram lançamentos por parcela (com encargos); as a vencer, um lançamento só da operação, sem parcela, com o desconto.
+        Tudo numa transação só (ADR-012).
+
+        **Reenvio:** com um `identificadorPagamento` que já existe na operação, nada é gravado e a resposta é `200` com a liquidação já registrada. Essa conferência vem antes das validações, para o reenvio não virar `400` por a operação já estar liquidada.
+      operationId: liquidarOperacao
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LiquidacaoRequest"
+            example:
+              valor: 8558
+              dataPagamento: "2027-01-15"
+              identificadorPagamento: app-9c41d0
+      responses:
+        "201":
+          description: Operação liquidada.
+          headers:
+            Location:
+              description: Histórico da operação, onde a liquidação aparece como evento.
+              schema:
+                type: string
+                example: /operacoes/OP-2026-0001/historico
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiquidacaoRegistrada"
+              examples:
+                meioDoPeriodo:
+                  $ref: "#/components/examples/LiquidacaoRegistrada"
+        "200":
+          description: O `identificadorPagamento` já existia na operação (reenvio). Nada foi gravado; a resposta é a liquidação já registrada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiquidacaoRegistrada"
+              examples:
+                reenvio:
+                  $ref: "#/components/examples/LiquidacaoRegistrada"
+        "400":
+          description: JSON malformado, identificador inválido ou regra de negócio violada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                corpoInvalido:
+                  value:
+                    erro: corpo da requisição inválido
+                identificadorInvalido:
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                valorAusente:
+                  value:
+                    erro: valor é obrigatório
+                valorDiferente:
+                  value:
+                    erro: valor deve ser igual ao valor para quitar em 2027-01-15, que é 8558.00
+                dataPagamentoInvalida:
+                  value:
+                    erro: dataPagamento deve estar no formato YYYY-MM-DD
+                dataPagamentoFutura:
+                  value:
+                    erro: dataPagamento não pode ser futura
+                dataPagamentoAntesDaLiberacao:
+                  value:
+                    erro: dataPagamento não pode ser anterior à dataLiberacao da operação
+                dataPagamentoAnterior:
+                  value:
+                    erro: dataPagamento não pode ser anterior à data da última movimentação financeira da operação
+                identificadorPagamentoVazio:
+                  value:
+                    erro: identificadorPagamento não pode ser vazio
+                identificadorPagamentoTamanho:
+                  value:
+                    erro: identificadorPagamento deve ter no máximo 50 caracteres
+                origemTamanho:
+                  value:
+                    erro: origem deve ter no máximo 30 caracteres
+                operacaoLiquidada:
+                  value:
+                    erro: a operação já está liquidada
+                identificadorJaUsado:
+                  summary: O identificador é de outra movimentação
+                  value:
+                    erro: identificadorPagamento já foi usado em outra movimentação da operação
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
 components:
   parameters:
     IdentificadorOperacao:
@@ -884,6 +1029,83 @@ components:
           status: ATIVA
           saldoDevedor: 9248.09
         registradoEm: "2026-12-20T14:02:11Z"
+
+    LiquidacaoNoVencimento:
+      summary: RN-18, parcelas 1 e 2 pagas, em 2026-12-30 (dia do vencimento da 2)
+      value:
+        numeroOperacao: OP-2026-0001
+        dataReferencia: "2026-12-30"
+        valorParaQuitar: 8482.27
+        saldoDevedor: 8482.27
+        vencidas:
+          parcelas: []
+          total: 0
+        aVencer:
+          parcelas:
+            - { numero: 3, vencimento: "2027-02-01", valorEmAberto: 936.91, valorPresente: 919.89, desconto: 17.02 }
+            - { numero: 4, vencimento: "2027-03-01", valorEmAberto: 936.91, valorPresente: 903.18, desconto: 33.73 }
+            - { numero: 5, vencimento: "2027-03-30", valorEmAberto: 936.91, valorPresente: 886.78, desconto: 50.13 }
+            - { numero: 6, vencimento: "2027-04-30", valorEmAberto: 936.91, valorPresente: 870.67, desconto: 66.24 }
+            - { numero: 7, vencimento: "2027-05-31", valorEmAberto: 936.91, valorPresente: 854.86, desconto: 82.05 }
+            - { numero: 8, vencimento: "2027-06-30", valorEmAberto: 936.91, valorPresente: 839.33, desconto: 97.58 }
+            - { numero: 9, vencimento: "2027-07-30", valorEmAberto: 936.91, valorPresente: 824.08, desconto: 112.83 }
+            - { numero: 10, vencimento: "2027-08-30", valorEmAberto: 936.91, valorPresente: 809.11, desconto: 127.8 }
+            - { numero: 11, vencimento: "2027-09-30", valorEmAberto: 936.91, valorPresente: 794.42, desconto: 142.49 }
+            - { numero: 12, vencimento: "2027-11-01", valorEmAberto: 936.87, valorPresente: 779.95, desconto: 156.92 }
+          valorNominal: 9369.06
+          valorPresente: 8482.27
+          desconto: 886.79
+          amortizacao: 8482.27
+          juros: 0
+
+    LiquidacaoNoMeioDoPeriodo:
+      summary: RN-18, parcelas 1 e 2 pagas, em 2027-01-15 (16 de 33 dias do período)
+      value:
+        numeroOperacao: OP-2026-0001
+        dataReferencia: "2027-01-15"
+        valorParaQuitar: 8558
+        saldoDevedor: 8482.27
+        vencidas:
+          parcelas: []
+          total: 0
+        aVencer:
+          parcelas:
+            - { numero: 3, vencimento: "2027-02-01", valorEmAberto: 936.91, valorPresente: 928.1, desconto: 8.81 }
+            - { numero: 4, vencimento: "2027-03-01", valorEmAberto: 936.91, valorPresente: 911.25, desconto: 25.66 }
+            - { numero: 5, vencimento: "2027-03-30", valorEmAberto: 936.91, valorPresente: 894.69, desconto: 42.22 }
+            - { numero: 6, vencimento: "2027-04-30", valorEmAberto: 936.91, valorPresente: 878.44, desconto: 58.47 }
+            - { numero: 7, vencimento: "2027-05-31", valorEmAberto: 936.91, valorPresente: 862.49, desconto: 74.42 }
+            - { numero: 8, vencimento: "2027-06-30", valorEmAberto: 936.91, valorPresente: 846.82, desconto: 90.09 }
+            - { numero: 9, vencimento: "2027-07-30", valorEmAberto: 936.91, valorPresente: 831.44, desconto: 105.47 }
+            - { numero: 10, vencimento: "2027-08-30", valorEmAberto: 936.91, valorPresente: 816.34, desconto: 120.57 }
+            - { numero: 11, vencimento: "2027-09-30", valorEmAberto: 936.91, valorPresente: 801.51, desconto: 135.4 }
+            - { numero: 12, vencimento: "2027-11-01", valorEmAberto: 936.87, valorPresente: 786.92, desconto: 149.95 }
+          valorNominal: 9369.06
+          valorPresente: 8558
+          desconto: 811.06
+          amortizacao: 8482.27
+          juros: 75.73
+
+    LiquidacaoRegistrada:
+      summary: RN-18, liquidação em 2027-01-15 com as parcelas 1 e 2 pagas
+      value:
+        id: 4
+        dataPagamento: "2027-01-15"
+        valor: 8558
+        identificadorPagamento: app-9c41d0
+        vencidas: []
+        aVencer:
+          parcelas: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+          valorNominal: 9369.06
+          desconto: 811.06
+          amortizacao: 8482.27
+          juros: 75.73
+          valor: 8558
+        operacao:
+          numeroOperacao: OP-2026-0001
+          status: LIQUIDADA
+          saldoDevedor: 0
+        registradoEm: "2027-01-15T12:45:30Z"
 
     OperacaoPrice:
       summary: Operação PRICE em dia (dataReferencia 2026-11-30)
@@ -1937,3 +2159,188 @@ components:
           format: date-time
           description: Momento do registro, em UTC.
           example: "2026-12-10T13:20:05Z"
+
+    ValorLiquidacao:
+      type: object
+      required: [numeroOperacao, dataReferencia, valorParaQuitar, saldoDevedor, vencidas, aVencer]
+      properties:
+        numeroOperacao:
+          type: string
+          example: OP-2026-0001
+        dataReferencia:
+          type: string
+          format: date
+          example: "2027-01-15"
+        valorParaQuitar:
+          type: number
+          description: "`vencidas.total + aVencer.valorPresente`. É o `valor` que o `POST` exige nessa data."
+          example: 8558
+        saldoDevedor:
+          type: number
+          description: Principal em aberto (RN-15), para comparação.
+          example: 8482.27
+        vencidas:
+          type: object
+          required: [parcelas, total]
+          properties:
+            parcelas:
+              type: array
+              description: Vencidas em aberto, com os encargos na data. Lista vazia sai como `[]`.
+              items:
+                type: object
+                required: [numero, vencimento, diasEmAtraso, valorEmAberto, multa, jurosMora, total]
+                properties:
+                  numero:
+                    type: integer
+                  vencimento:
+                    type: string
+                    format: date
+                  diasEmAtraso:
+                    type: integer
+                  valorEmAberto:
+                    type: number
+                  multa:
+                    type: number
+                    description: Multa em aberto.
+                  jurosMora:
+                    type: number
+                    description: Juros de mora em aberto.
+                  total:
+                    type: number
+                    description: "`valorEmAberto + multa + jurosMora`."
+            total:
+              type: number
+        aVencer:
+          type: object
+          required: [parcelas, valorNominal, valorPresente, desconto, amortizacao, juros]
+          properties:
+            parcelas:
+              type: array
+              items:
+                type: object
+                required: [numero, vencimento, valorEmAberto, valorPresente, desconto]
+                properties:
+                  numero:
+                    type: integer
+                  vencimento:
+                    type: string
+                    format: date
+                  valorEmAberto:
+                    type: number
+                  valorPresente:
+                    type: number
+                    description: RN-16, arredondado ao centavo. Igual ao `valorEmAberto` na parcela que vence no próprio dia.
+                  desconto:
+                    type: number
+                    description: "`valorEmAberto - valorPresente`."
+            valorNominal:
+              type: number
+              description: Soma dos `valorEmAberto`.
+            valorPresente:
+              type: number
+              description: Soma dos `valorPresente`.
+            desconto:
+              type: number
+              description: "`valorNominal - valorPresente`."
+            amortizacao:
+              type: number
+              description: Parte do valor presente que é principal (o saldo devedor dessas parcelas).
+            juros:
+              type: number
+              description: Juros pro rata do período em curso (`valorPresente - amortizacao`). Zero no dia de um vencimento.
+
+    LiquidacaoRequest:
+      type: object
+      required: [valor]
+      properties:
+        valor:
+          type: number
+          description: Igual ao `valorParaQuitar` na `dataPagamento`.
+          example: 8558
+        dataPagamento:
+          type: string
+          format: date
+          description: RN-09. Omitida, vale hoje. Não pode ser futura, anterior à `dataLiberacao` nem anterior à última movimentação financeira da operação.
+          example: "2027-01-15"
+        identificadorPagamento:
+          type: string
+          maxLength: 50
+          description: Opcional. Repetido na mesma operação = reenvio (`200`, nada é gravado).
+          example: app-9c41d0
+        origem:
+          type: string
+          maxLength: 30
+          description: Opcional, texto livre. Só vai para o histórico.
+          example: CLIENTE
+
+    LiquidacaoRegistrada:
+      type: object
+      required: [id, dataPagamento, valor, vencidas, aVencer, operacao, registradoEm]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Id do evento `LIQUIDACAO` no histórico.
+          example: 4
+        dataPagamento:
+          type: string
+          format: date
+          example: "2027-01-15"
+        valor:
+          type: number
+          example: 8558
+        identificadorPagamento:
+          type: string
+          description: Só aparece quando foi enviado no pedido.
+        origem:
+          type: string
+          description: Só aparece quando foi enviada no pedido.
+        vencidas:
+          type: array
+          description: Um lançamento por parcela vencida, com a distribuição da RN-14. Lista vazia sai como `[]`.
+          items:
+            type: object
+            required: [numero, distribuicao]
+            properties:
+              numero:
+                type: integer
+              distribuicao:
+                $ref: "#/components/schemas/Distribuicao"
+        aVencer:
+          type: object
+          description: O lançamento único da operação para as parcelas a vencer (RN-18).
+          required: [parcelas, valorNominal, desconto, amortizacao, juros, valor]
+          properties:
+            parcelas:
+              type: array
+              description: Números das parcelas quitadas por valor presente.
+              items:
+                type: integer
+            valorNominal:
+              type: number
+            desconto:
+              type: number
+            amortizacao:
+              type: number
+              description: O saldo devedor que restava.
+            juros:
+              type: number
+            valor:
+              type: number
+              description: "`amortizacao + juros`, o valor presente pago."
+        operacao:
+          type: object
+          required: [numeroOperacao, status, saldoDevedor]
+          properties:
+            numeroOperacao:
+              type: string
+              example: OP-2026-0001
+            status:
+              $ref: "#/components/schemas/StatusOperacao"
+            saldoDevedor:
+              type: number
+              example: 0
+        registradoEm:
+          type: string
+          format: date-time
+          example: "2027-01-15T12:45:30Z"
