@@ -45,8 +45,25 @@ func (s *OperacaoService) validarPedido(pedido domain.PedidoMovimentacao) (movim
 		return m, errors.New("valor deve ter no máximo 2 casas decimais")
 	}
 
+	base, err := s.validarPedidoSemValor(pedido.DataPagamento, pedido.IdentificadorPagamento)
+	if err != nil {
+		return m, err
+	}
+	base.valor = m.valor
+	if pedido.Origem != nil {
+		base.origem = strings.TrimSpace(*pedido.Origem)
+		if len([]rune(base.origem)) > 30 {
+			return base, errors.New("origem deve ter no máximo 30 caracteres")
+		}
+	}
+	return base, nil
+}
+
+// data e identificador, comuns a tudo o que movimenta dinheiro (RN-09 e RN-14).
+func (s *OperacaoService) validarPedidoSemValor(dataPagamento, identificadorPagamento *string) (movimento, error) {
+	var m movimento
 	agora := s.agora()
-	data, err := interpretarDataReferencia(pedido.DataPagamento, agora)
+	data, err := interpretarDataReferencia(dataPagamento, agora)
 	if err != nil {
 		return m, errors.New("dataPagamento deve estar no formato YYYY-MM-DD")
 	}
@@ -55,17 +72,10 @@ func (s *OperacaoService) validarPedido(pedido domain.PedidoMovimentacao) (movim
 	}
 	m.data = data
 
-	if pedido.IdentificadorPagamento != nil {
-		m.identificador = strings.TrimSpace(*pedido.IdentificadorPagamento)
+	if identificadorPagamento != nil {
+		m.identificador = strings.TrimSpace(*identificadorPagamento)
 		if err := validarTexto("identificadorPagamento", m.identificador, 50); err != nil {
 			return m, err
-		}
-	}
-	// origem é só informativa: vazia vale como não enviada.
-	if pedido.Origem != nil {
-		m.origem = strings.TrimSpace(*pedido.Origem)
-		if len([]rune(m.origem)) > 30 {
-			return m, errors.New("origem deve ter no máximo 30 caracteres")
 		}
 	}
 	return m, nil

@@ -87,6 +87,13 @@ func (r *OperacaoRepository) Movimentar(id int64, numero, identificadorExterno s
 		}
 	}
 
+	for _, p := range novo.ParcelasRecalculadas {
+		if _, err := tx.Exec(`UPDATE parcela SET juros = $1, amortizacao = $2, saldo_devedor = $3 WHERE operacao_id = $4 AND numero = $5`,
+			p.Depois.Juros, p.Depois.Amortizacao, p.Depois.SaldoDevedor, operacaoID, p.Numero); err != nil {
+			return domain.EventoGravado{}, false, err
+		}
+	}
+
 	status := carteira.Operacao.Status
 	if novo.Liquidar {
 		status = domain.StatusOperacaoLiquidada
