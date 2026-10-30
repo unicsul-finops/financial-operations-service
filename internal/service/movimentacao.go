@@ -15,6 +15,7 @@ import (
 // pagamento de parcela (RN-14, RN-15, RN-19) e liquidação antecipada (RN-18).
 type RepositorioMovimentacoes interface {
 	ConsultarCarteira(id int64, numero string) (domain.Carteira, error)
+	ConsultarHistorico(id int64, numero string) (domain.Historico, error)
 	// trava a operação, procura o reenvio pelo identificador e, se não for reenvio, grava o que decidir devolver.
 	// tudo numa transação, pra dois pagamentos ao mesmo tempo não calcularem em cima do mesmo saldo.
 	Movimentar(id int64, numero, identificadorExterno string, decidir func(domain.Carteira) (domain.NovoEvento, error)) (domain.EventoGravado, bool, error)
