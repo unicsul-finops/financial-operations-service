@@ -13,8 +13,9 @@ import (
 	"github.com/unicsul-finops/financial-operations-service/api"
 )
 
-// rotas de documentação não fazem parte do contrato, então ficam fora da comparação.
+// rotas de documentação e do painel não fazem parte do contrato, então ficam fora da comparação.
 var rotasDeDocumentacao = map[string]bool{
+	"GET /":             true,
 	"GET /openapi.yaml": true,
 	"GET /swagger":      true,
 	"GET /swagger/*any": true,
@@ -72,6 +73,22 @@ func TestOpenAPICobreTodasAsRotas(t *testing.T) {
 	}
 	if sobrando := diferenca(documentadas, registradas); len(sobrando) > 0 {
 		t.Errorf("rotas documentadas que não existem no router: %v", sobrando)
+	}
+}
+
+func TestPainelResponde(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	resposta := httptest.NewRecorder()
+	novoRouter(nil).ServeHTTP(resposta, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("status %d, esperava %d", resposta.Code, http.StatusOK)
+	}
+	if tipo := resposta.Header().Get("Content-Type"); tipo != "text/html; charset=utf-8" {
+		t.Errorf("Content-Type %q", tipo)
+	}
+	if !strings.Contains(resposta.Body.String(), "<title>finops") {
+		t.Error("o corpo não é o painel")
 	}
 }
 

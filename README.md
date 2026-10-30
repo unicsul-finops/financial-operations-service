@@ -60,6 +60,7 @@ As escolhas estão justificadas nos [ADRs](docs/architecture/adr/README.md).
 financial-operations-service/
 ├── api/                      # openapi.yaml (Swagger), embutido no binário
 ├── cmd/api/                  # ponto de entrada: liga dependências e rotas
+├── web/                      # painel (index.html), embutido no binário
 ├── internal/
 │   ├── config/               # leitura de PORT e DATABASE_URL
 │   ├── database/             # conexão com o PostgreSQL
@@ -247,8 +248,21 @@ Para testar tudo de uma vez, use a coleção em [`collections/`](collections). E
 | `GET` | `/operacoes` | Lista as operações |
 | `GET` | `/operacoes/:identificador` | Situação da operação (`numeroOperacao`, ou o id interno) |
 | `GET` | `/operacoes/:identificador/parcelas` | Cronograma de parcelas (`numeroOperacao`, ou o id interno) |
+| `GET` | `/` | Painel para acompanhar e operar as operações |
 | `GET` | `/swagger` | Documentação interativa (Swagger UI) |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 |
+
+### Painel
+
+Com a API rodando, abra o painel no navegador:
+
+```text
+http://localhost:8083/
+```
+
+É um arquivo só (`web/index.html`), embutido no binário, que funciona sem internet. Tem dashboard com os totais e as situações das operações, a lista com busca e filtro, o detalhe de cada operação (resumo, parcelas e histórico) e uma área para cada ação: pagar parcela, amortização antecipada, liquidação e registrar operação. A **data de referência** no topo vale para todas as consultas.
+
+Para ver o serviço de um colega, abra o painel dele pelo IP da máquina (`http://IP:8083/`). O painel usa sempre a API da máquina que o serviu, então cada pessoa vê e mexe nas operações do próprio banco.
 
 ### Swagger
 

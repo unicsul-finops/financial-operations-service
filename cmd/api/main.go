@@ -36,6 +36,7 @@ func main() {
 	router := novoRouter(operacaoHandler)
 
 	log.Printf("financial-operations-service ouvindo na porta %s", cfg.Porta)
+	log.Printf("painel em http://localhost:%s/", cfg.Porta)
 	log.Printf("swagger em http://localhost:%s/swagger", cfg.Porta)
 
 	if err := router.Run(":" + cfg.Porta); err != nil {
@@ -52,6 +53,7 @@ func novoRouter(operacaoHandler *handler.OperacaoHandler) *gin.Engine {
 	router.NoRoute(handler.RotaNaoEncontrada)
 	router.NoMethod(handler.MetodoNaoPermitido)
 
+	router.GET("/", handler.Painel)
 	router.GET("/health", handler.Health)
 
 	router.POST("/operacoes", operacaoHandler.Criar)
