@@ -12,53 +12,66 @@
   --txt:#1f4647; --txt-2:#5d7778; --verde:#9eea6c; --verde-esc:#5fb82b; --verde-bg:#eefbe5;
   --linha:#E2E7F1; --bg:#f6f8f5; --branco:#fff; --erro:#c0392b; --erro-bg:#fdecea; --alerta:#b7791f; --alerta-bg:#fff6e0;
   --raio:16px; --ease:cubic-bezier(.2,.7,.2,1);
+  --listras:repeating-linear-gradient(45deg,rgba(226,231,241,.8) 0 1px,transparent 1px 14px);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--txt);font-family:'Fustat',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{margin:0;color:var(--txt);font-family:'Fustat',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  background-color:var(--bg);background-image:var(--listras)}
 a{color:inherit}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em}
 .num{font-feature-settings:'tnum' 0}
 td.num,td .num,dd.num{font-variant-numeric:tabular-nums}
+svg.ic{width:1.15em;height:1.15em;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 
-/* ---------- topo ---------- */
-.topo{position:sticky;top:0;z-index:20;background:rgba(246,248,245,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--linha)}
-.topo-in{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.logo{display:flex;align-items:center;text-decoration:none}
-.logo svg{height:34px;width:auto;display:block}
-.nav{display:flex;gap:2px;flex-wrap:wrap;flex:1}
-.nav a{padding:8px 13px;border-radius:999px;text-decoration:none;font-weight:600;color:var(--txt-2);transition:background .2s var(--ease),color .2s var(--ease)}
-.nav a:hover{background:var(--branco);color:var(--txt)}
-.nav a.ativo{background:var(--txt);color:var(--branco)}
-.ref{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt-2);white-space:nowrap}
-.ref input{border:1px solid var(--linha);background:var(--branco);border-radius:10px;padding:6px 9px;font-size:13px}
-.ref button{border:0;background:none;color:var(--txt-2);cursor:pointer;font-size:13px;text-decoration:underline;padding:0}
-
-/* ---------- página ---------- */
-main{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
-.tela{animation:entra .28s var(--ease) both}
-@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.titulo{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
-.titulo h1{font-size:30px}
-.titulo p{margin:4px 0 0;color:var(--txt-2)}
-
-/* ---------- blocos (a ilusão do index2.html) ---------- */
-.blocos{display:grid;gap:1px;background:var(--linha);border:1px solid var(--linha);border-radius:0;margin-bottom:24px;grid-template-columns:repeat(4,minmax(0,1fr));overflow:hidden}
-.blocos.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
-.blocos.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* ---------- quadro: a ilusão do index2.html vale para a página toda ---------- */
+.quadro{max-width:1180px;margin:0 auto;background:var(--linha);box-shadow:0 0 0 1px var(--linha)}
+.grade{display:grid;gap:1px;background:var(--linha);grid-template-columns:repeat(4,minmax(0,1fr))}
+.grade .blocos,.grade form,.grade .campos,.grade #conteudo,.grade #saida{display:contents}
 .bloco{background:var(--branco);padding:22px;min-width:0;position:relative;transition:background .25s var(--ease)}
-.blocos[style*="grid-template-columns:1fr"]{grid-template-columns:minmax(0,1fr)!important}
 .bloco.s2{grid-column:span 2}.bloco.s3{grid-column:span 3}.bloco.s4{grid-column:1/-1}
 .bloco.link{cursor:pointer}
 .bloco.link:hover{background:#fbfdf9}
-.bloco.link:hover .seta{transform:translateX(4px);color:var(--verde-esc)}
-.listrado{background-image:repeating-linear-gradient(45deg,rgba(226,231,241,.8) 0 1px,transparent 1px 14px)}
-.rotulo{font-size:12.5px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.bloco:empty:not(.preenchimento){display:none}
+.listrado{background-image:var(--listras)}
+.vazio-cel{background-color:var(--branco);background-image:var(--listras);padding:0}
+
+/* ---------- topo: também em blocos ---------- */
+.topo{position:sticky;top:0;z-index:30}
+.topo .grade{grid-template-columns:auto minmax(0,1fr) auto}
+.topo .bloco{padding:0;display:flex;align-items:center}
+.logo{display:flex;align-items:center;text-decoration:none;padding:12px 28px}
+.logo svg{height:64px;width:auto;display:block}
+.nav{display:flex;gap:0;flex-wrap:wrap;padding:10px 10px}
+.nav a{display:inline-flex;align-items:center;gap:8px;padding:9px 11px;border-radius:12px;text-decoration:none;font-weight:600;color:var(--txt-2);transition:background .2s var(--ease),color .2s var(--ease)}
+.nav a:hover{background:var(--verde-bg);color:var(--txt)}
+.nav a.ativo{background:var(--txt);color:var(--branco)}
+.nav a.ativo svg{color:var(--verde)}
+.ref{padding:0 18px;gap:8px;font-size:13px;color:var(--txt-2);white-space:nowrap}
+.ref label{display:flex;flex-direction:row;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.ref input{width:auto;padding:7px 10px;font-size:13px;border-radius:10px}
+.ref button{border:0;background:none;color:var(--txt-2);cursor:pointer;font-size:13px;text-decoration:underline;padding:0}
+.faixa{grid-column:1/-1;height:14px;padding:0!important;background-color:var(--branco)}
+
+/* ---------- página ---------- */
+main{padding-bottom:70px}
+main .quadro{margin-top:1px}
+.tela{animation:entra .28s var(--ease) both}
+@keyframes entra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.cab{display:flex;align-items:center;gap:16px}
+.cab .selo{width:52px;height:52px;border-radius:14px;background:var(--verde-bg);color:var(--txt);display:grid;place-items:center;flex:none;border:1px solid rgba(95,184,43,.25)}
+.cab .selo svg{width:26px;height:26px}
+.cab h1{font-size:28px;line-height:1.15}
+.cab p{margin:4px 0 0;color:var(--txt-2)}
+.cab-acoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.rotulo{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--txt-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.rotulo svg{color:var(--verde-esc);width:1.25em;height:1.25em}
 .grande{font-size:32px;font-weight:700;line-height:1.1;letter-spacing:-.02em}
 .sub{margin-top:6px;color:var(--txt-2);font-size:13.5px}
-.seta{display:inline-block;transition:transform .25s var(--ease),color .25s var(--ease)}
-.bloco h2{font-size:18px;margin-bottom:14px}
+.seta{display:inline-block;transition:transform .25s var(--ease)}
+.bloco h2{display:flex;align-items:center;gap:9px;font-size:18px;margin-bottom:14px}
+.bloco h2 svg{color:var(--verde-esc)}
 
 /* ---------- chips ---------- */
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:700;background:var(--linha);color:var(--txt);white-space:nowrap}
@@ -82,20 +95,24 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-2);font-weight:600;padding:0 12px 10px 0;white-space:nowrap}
 td{padding:11px 12px 11px 0;border-top:1px solid var(--linha);vertical-align:middle}
 td.dir,th.dir{text-align:right;padding-left:14px;padding-right:0}
-th.dir{white-space:nowrap}
 tr.clicavel{cursor:pointer;transition:background .2s}
 tr.clicavel:hover td{background:#fbfdf9}
 .mudo{color:var(--txt-2)}
 
-/* ---------- formulários ---------- */
-.form{display:grid;gap:16px}
-.campos{display:grid;align-items:start;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
-label{display:grid;gap:6px;font-weight:600;font-size:13.5px}
-label small{font-weight:400;color:var(--txt-2)}
-input,select,textarea{width:100%;border:1px solid var(--linha);background:var(--branco);border-radius:12px;padding:10px 12px;transition:border-color .2s,box-shadow .2s}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde-esc);box-shadow:0 0 0 4px rgba(158,234,108,.28)}
+/* ---------- campos: cada um é um bloco ---------- */
+.campo{background:var(--branco);padding:18px 22px;display:grid;gap:7px;align-content:start;min-width:0;font-weight:600;font-size:13.5px}
+.campo.s2{grid-column:span 2}.campo.s4{grid-column:1/-1}
+.campo small{font-weight:400;color:var(--txt-2)}
+.campo .rot{display:flex;align-items:center;gap:7px}
+.campo .rot svg{color:var(--verde-esc);width:1.1em;height:1.1em}
+input,textarea{width:100%;border:1px solid var(--linha);background:var(--branco);border-radius:12px;padding:10px 12px;transition:border-color .2s,box-shadow .2s;font-weight:400}
+input:focus,textarea:focus{outline:none;border-color:var(--verde-esc);box-shadow:0 0 0 4px rgba(158,234,108,.28)}
+input[type=date]{accent-color:var(--verde-esc);min-height:44px}
 textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height:340px;resize:vertical}
 .acoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.acoes.cel{background:var(--branco);padding:18px 22px;grid-column:1/-1}
+.aviso-cel{grid-column:1/-1;background:var(--branco);padding:14px 22px}
+.aviso-cel:empty{display:none}
 .btn{border:1px solid var(--txt);background:var(--branco);color:var(--txt);padding:10px 18px;border-radius:12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:transform .15s var(--ease),background .2s,box-shadow .2s}
 .btn:hover{transform:translateY(-1px);background:var(--verde-bg)}
 .btn:active{transform:none}
@@ -110,19 +127,40 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 .filtros button{border:1px solid var(--linha);background:var(--branco);padding:7px 13px;border-radius:999px;font-weight:600;cursor:pointer;color:var(--txt-2);transition:all .2s}
 .filtros button.ativo{background:var(--txt);border-color:var(--txt);color:var(--branco)}
 
+/* ---------- seletor estilizado ---------- */
+.combo{position:relative}
+.combo-b,.combo-i{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--linha);background:var(--branco);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;font-weight:400;min-height:44px;transition:border-color .2s,box-shadow .2s}
+.combo-i{cursor:text;padding:0}
+.combo-i input{border:0;box-shadow:none!important;background:none;padding:10px 12px;border-radius:12px}
+.combo-i svg{margin-right:12px}
+.combo-b:hover{border-color:#cdd5e4}
+.combo.aberto .combo-b,.combo.aberto .combo-i,.combo-i:focus-within,.combo-b:focus-visible{border-color:var(--verde-esc);box-shadow:0 0 0 4px rgba(158,234,108,.28);outline:none}
+.combo-b[disabled]{opacity:.55;cursor:not-allowed}
+.combo-b svg,.combo-i svg{color:var(--txt-2);transition:transform .2s var(--ease)}
+.combo.aberto .combo-b svg,.combo.aberto .combo-i svg{transform:rotate(180deg)}
+.combo-v.ph{color:var(--txt-2)}
+.combo-l{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:40;background:var(--branco);border:1px solid var(--linha);border-radius:14px;padding:6px;max-height:268px;overflow:auto;box-shadow:0 18px 40px -18px rgba(31,70,71,.35);animation:entra .18s var(--ease) both}
+.combo-l[hidden]{display:none}
+.combo-o{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border-radius:9px;cursor:pointer;font-weight:600}
+.combo-o small{font-weight:400;color:var(--txt-2)}
+.combo-o.ativo,.combo-o:hover{background:var(--verde-bg)}
+.combo-o.sel{background:var(--verde-bg)}
+.combo-nada{padding:12px;color:var(--txt-2);font-weight:400}
+
 /* ---------- abas ---------- */
-.abas{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--linha)}
-.abas button{border:0;background:none;padding:10px 16px;font-weight:700;color:var(--txt-2);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s}
+.abas{display:flex;gap:4px;padding:0 14px!important}
+.abas button{display:inline-flex;align-items:center;gap:8px;border:0;background:none;padding:15px 16px;font-weight:700;color:var(--txt-2);cursor:pointer;border-bottom:3px solid transparent;transition:color .2s,border-color .2s}
 .abas button.ativo{color:var(--txt);border-color:var(--verde)}
+.abas button.ativo svg{color:var(--verde-esc)}
 
 /* ---------- avisos ---------- */
-.aviso{border-radius:12px;padding:12px 16px;margin-bottom:16px;font-weight:600;animation:entra .25s var(--ease) both}
+.aviso{border-radius:12px;padding:12px 16px;font-weight:600;animation:entra .25s var(--ease) both}
 .aviso.erro{background:var(--erro-bg);color:var(--erro)}
 .aviso.ok{background:var(--verde-bg);color:#2f7a12}
 .aviso.info{background:var(--alerta-bg);color:var(--alerta)}
 .vazio{text-align:center;padding:42px 12px;color:var(--txt-2)}
 .vazio strong{display:block;color:var(--txt);font-size:17px;margin-bottom:4px}
-.carregando{color:var(--txt-2);padding:30px 0;animation:pulso 1.2s ease-in-out infinite}
+.carregando{grid-column:1/-1;background:var(--branco);color:var(--txt-2);padding:40px 22px;animation:pulso 1.2s ease-in-out infinite}
 @keyframes pulso{50%{opacity:.4}}
 
 /* ---------- linha do tempo ---------- */
@@ -146,27 +184,33 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 .modal .acoes{justify-content:flex-end}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:0 0 18px}
 .kv dt{color:var(--txt-2)}.kv dd{margin:0;font-weight:700;text-align:right}
+.bloco .kv{margin-bottom:0}
 
-.atalhos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.atalhos .btn{justify-content:space-between;background:var(--branco)}
-.atalhos .btn.primario{background:var(--verde)}
-.atalhos .btn:hover .seta{transform:translateX(4px)}
 .hero{display:flex;flex-direction:column;justify-content:space-between;gap:22px;min-height:100%}
 .servidor{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
 .ponto{width:9px;height:9px;border-radius:50%;background:#bbb}
 .ponto.on{background:var(--verde-esc);box-shadow:0 0 0 0 rgba(95,184,43,.5);animation:ping 2s infinite}
 @keyframes ping{70%{box-shadow:0 0 0 8px rgba(95,184,43,0)}100%{box-shadow:0 0 0 0 rgba(95,184,43,0)}}
+.atalhos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.atalhos .btn{justify-content:space-between;background:var(--branco)}
+.atalhos .btn.primario{background:var(--verde)}
+.atalhos .btn:hover .seta{transform:translateX(4px)}
+.atalhos .btn span.t{display:inline-flex;align-items:center;gap:8px}
 
-@media (max-width:900px){
-  .blocos,.blocos.c3{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .bloco.s3,.bloco.s4{grid-column:1/-1}
+@media (max-width:980px){
+  .grade{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bloco.s3,.bloco.s4,.campo.s4{grid-column:1/-1}
+  .topo .grade{grid-template-columns:minmax(0,1fr)}
+  .logo svg{height:52px}
 }
 @media (max-width:560px){
-  .blocos,.blocos.c2,.blocos.c3{grid-template-columns:minmax(0,1fr)}
-  .bloco.s2,.bloco.s3,.bloco.s4{grid-column:auto}
+  .grade{grid-template-columns:minmax(0,1fr)}
+  .bloco.s2,.campo.s2{grid-column:auto}
   .evento{grid-template-columns:1fr;gap:2px}.evento .pino{display:none}
-  .grande{font-size:27px}.titulo h1{font-size:25px}
+  .grande{font-size:27px}.cab h1{font-size:23px}.cab .selo{display:none}
   .barra{grid-template-columns:96px 1fr 28px}
+  .logo{padding:10px 20px}.logo svg{height:46px}
+  .cab-acoes{justify-content:flex-start}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
@@ -174,9 +218,8 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
 <body>
 
 <header class="topo">
-  <div class="topo-in">
-    <a class="logo" href="#/" aria-label="finops">
-      <svg viewBox="0 0 201 199" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
+  <div class="quadro"><div class="grade" id="gradeTopo">
+    <div class="bloco"><a class="logo" href="#/" aria-label="finops"><svg viewBox="0 0 201 199" fill="none" xmlns="http://www.w3.org/2000/svg" role="img">
         <g filter="url(#fo1)"><path d="M160.44 32.0801H151.44C150.335 32.0801 149.44 32.9755 149.44 34.0801V94.0801C149.44 95.1846 150.335 96.0801 151.44 96.0801H160.44C161.545 96.0801 162.44 95.1846 162.44 94.0801V34.0801C162.44 32.9755 161.545 32.0801 160.44 32.0801Z" fill="#9EEA6C"/></g>
         <g filter="url(#fo2)"><path d="M178.94 56.0801H169.94C168.835 56.0801 167.94 56.9755 167.94 58.0801V94.0801C167.94 95.1846 168.835 96.0801 169.94 96.0801H178.94C180.045 96.0801 180.94 95.1846 180.94 94.0801V58.0801C180.94 56.9755 180.045 56.0801 178.94 56.0801Z" fill="#9EEA6C"/></g>
         <g filter="url(#fo3)"><path d="M197.44 77.0801H188.44C187.335 77.0801 186.44 77.9755 186.44 79.0801V94.0801C186.44 95.1846 187.335 96.0801 188.44 96.0801H197.44C198.545 96.0801 199.44 95.1846 199.44 94.0801V79.0801C199.44 77.9755 198.545 77.0801 197.44 77.0801Z" fill="#9EEA6C"/></g>
@@ -191,26 +234,17 @@ textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height
           <filter id="fo2" x="167.94" y="34.08" width="13" height="66" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="b"/><feBlend in="SourceGraphic" in2="b" result="s"/><feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="h"/><feOffset dy="6"/><feGaussianBlur stdDeviation="3"/><feComposite in2="h" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix values="0 0 0 0 0.51 0 0 0 0 1 0 0 0 0 0.137 0 0 0 0.25 0"/><feBlend in2="s"/></filter>
           <filter id="fo3" x="186.44" y="55.08" width="13" height="45" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="b"/><feBlend in="SourceGraphic" in2="b" result="s"/><feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="h"/><feOffset dy="6"/><feGaussianBlur stdDeviation="3"/><feComposite in2="h" operator="arithmetic" k2="-1" k3="1"/><feColorMatrix values="0 0 0 0 0.51 0 0 0 0 1 0 0 0 0 0.137 0 0 0 0.25 0"/><feBlend in2="s"/></filter>
         </defs>
-      </svg>
-    </a>
-    <nav class="nav" id="nav">
-      <a href="#/" data-r="">Dashboard</a>
-      <a href="#/operacoes" data-r="operacoes">Operações</a>
-      <a href="#/pagar" data-r="pagar">Pagar parcela</a>
-      <a href="#/amortizar" data-r="amortizar">Amortização</a>
-      <a href="#/liquidar" data-r="liquidar">Liquidação</a>
-      <a href="#/registrar" data-r="registrar">Registrar</a>
-    </nav>
-    <div class="ref" title="Data usada nas consultas e como padrão nas ações. Vazio = hoje.">
-      <label style="display:flex;flex-direction:row;align-items:center;gap:8px;font-weight:600;font-size:13px">Data de referência
-        <input type="date" id="dataRef">
-      </label>
-      <button id="hoje" type="button">hoje</button>
+      </svg></a></div>
+    <div class="bloco"><nav class="nav" id="nav"></nav></div>
+    <div class="bloco ref" title="Data usada nas consultas e como padrão nas ações. Vazio = hoje.">
+      <label title="Data de referência"><span class="ico-ref"></span><input type="date" id="dataRef" aria-label="Data de referência"></label>
+      <button id="hoje" type="button" hidden>hoje</button>
     </div>
-  </div>
+    <div class="bloco faixa listrado"></div>
+  </div></div>
 </header>
 
-<main id="app"></main>
+<main><div class="quadro"><div class="grade tela" id="app"></div></div></main>
 <div id="camada"></div>
 
 <script>
@@ -229,6 +263,34 @@ const hojeISO = () => { const d = new Date(Date.now() - 3 * 3600 * 1000); return
 const ROTULO = { ATIVA: 'Ativa', EM_ATRASO: 'Em atraso', INADIMPLENTE: 'Inadimplente', LIQUIDADA: 'Liquidada', PENDENTE: 'Pendente', PAGA: 'Paga', VENCIDA: 'Vencida', PARCIALMENTE_PAGA: 'Parcial', REGISTRADO: 'Registrado', CALCULADO: 'Calculado' };
 const chip = (s) => `<span class="chip ${esc(s)}">${esc(ROTULO[s] || s)}</span>`;
 const TIPO = { OPERACAO_REGISTRADA: 'Operação registrada', PAGAMENTO: 'Pagamento', AMORTIZACAO_ANTECIPADA: 'Amortização antecipada', LIQUIDACAO: 'Liquidação', PARCELA_VENCIDA: 'Parcela vencida', OPERACAO_INADIMPLENTE: 'Operação inadimplente' };
+
+/* ícones (traço, 24x24) */
+const ICONES = {
+  dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  operacoes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/>',
+  pagar: '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/>',
+  amortizar: '<path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>',
+  liquidar: '<circle cx="12" cy="12" r="10"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+  registrar: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/>',
+  carteira: '<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
+  saldo: '<path d="M12 3v18M5 7h14M5 7l-3 8a3.5 3.5 0 0 0 6 0zM19 7l-3 8a3.5 3.5 0 0 0 6 0z"/>',
+  pago: '<circle cx="12" cy="12" r="10"/><path d="M12 7v10M9.5 9.5c0-1 1.1-1.8 2.5-1.8s2.5.8 2.5 1.8-1.1 1.7-2.5 1.9-2.5.9-2.5 2 1.1 1.8 2.5 1.8 2.5-.8 2.5-1.8"/>',
+  alerta: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  relogio: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  calendario: '<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  lista: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  historico: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  resumo: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  parcelas: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M3 14h18M9 4v16"/>',
+  atualizar: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  seta: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  chevron: '<path d="M6 9l6 6 6-6"/>',
+  desconto: '<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+  contrato: '<path d="M12 3l9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/>',
+  calendario2: '<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18M8 15h3"/>',
+  tag: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
+};
+const ic = (nome, extra = '') => `<svg class="ic ${extra}" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome] || ''}</svg>`;
 
 const estado = { dataRef: '' };
 
@@ -257,8 +319,36 @@ const comData = (caminho, extra = '') => {
 const idOp = (v) => encodeURIComponent(String(v).trim());
 
 /* ============ blocos: só a quina que aponta para o centro é arredondada ============ */
+const CELULAS = '.bloco, .campo, .carregando, .aviso-cel, .acoes.cel';
+
+// células vazias no fim de uma linha ganham o fundo listrado, como no index2.html
+function preencher(grade) {
+  $$('.preenchimento', grade).forEach((f) => f.remove());
+  const colunas = getComputedStyle(grade).gridTemplateColumns.split(' ').length;
+  const larguraCol = grade.getBoundingClientRect().width / colunas;
+  const linhas = new Map();
+  $$(CELULAS, grade).forEach((c) => {
+    const r = c.getBoundingClientRect();
+    if (!r.width) return;
+    const chave = Math.round(r.top);
+    const l = linhas.get(chave) || { usado: 0, ultima: null, esq: -1 };
+    l.usado += Math.max(1, Math.round(r.width / larguraCol));
+    if (r.left > l.esq) { l.esq = r.left; l.ultima = c; }
+    linhas.set(chave, l);
+  });
+  linhas.forEach((l) => {
+    const livre = colunas - l.usado;
+    if (livre > 0 && l.ultima) {
+      const f = document.createElement('div');
+      f.className = 'vazio-cel preenchimento bloco';
+      f.style.gridColumn = `span ${livre}`;
+      l.ultima.after(f);
+    }
+  });
+}
+
 function cantos(grade) {
-  const cel = $$(':scope > .bloco', grade);
+  const cel = $$(CELULAS, grade).filter((c) => c.getBoundingClientRect().width > 0);
   const r = cel.map((c) => c.getBoundingClientRect());
   const t = 3;
   cel.forEach((c, i) => {
@@ -275,9 +365,15 @@ function cantos(grade) {
     c.style.borderBottomRightRadius = dir && baixo ? R : '0';
   });
 }
-const observador = new ResizeObserver((entradas) => entradas.forEach((e) => cantos(e.target)));
-function ativarBlocos(raiz) {
-  $$('.blocos', raiz).forEach((g) => { cantos(g); observador.observe(g); });
+let reajustando = false;
+function ajustar(grade) {
+  if (reajustando) return;
+  reajustando = true;
+  try { preencher(grade); cantos(grade); } finally { reajustando = false; }
+}
+const observador = new ResizeObserver((entradas) => entradas.forEach((e) => ajustar(e.target)));
+function ativarBlocos() {
+  [$('#gradeTopo'), $('#app')].forEach((g) => { ajustar(g); observador.observe(g); });
 }
 
 /* ============ pequenas animações ============ */
@@ -313,19 +409,97 @@ function confirmar({ titulo, texto, linhas = [], ok = 'Confirmar' }) {
   });
 }
 
+/* ============ seletor estilizado (substitui <select> e <datalist>) ============ */
+// opcoes: [{valor, rotulo, sub}]. o valor fica num <input id=...>, e o evento 'change' continua valendo.
+function htmlCombo(id, { digitavel = false, placeholder = 'Selecione', valor = '' } = {}) {
+  return digitavel
+    ? `<div class="combo" data-combo="${id}"><div class="combo-i"><input id="${id}" value="${esc(valor)}" placeholder="${esc(placeholder)}" autocomplete="off" role="combobox">${ic('chevron')}</div><div class="combo-l" hidden></div></div>`
+    : `<div class="combo" data-combo="${id}"><input type="hidden" id="${id}"><button type="button" class="combo-b" aria-haspopup="listbox"><span class="combo-v ph">${esc(placeholder)}</span>${ic('chevron')}</button><div class="combo-l" hidden></div></div>`;
+}
+function ligarCombo(raiz, id, { digitavel = false, placeholder = 'Selecione' } = {}) {
+  const caixa = $(`[data-combo="${id}"]`, raiz), campo = $('#' + id, raiz), lista = $('.combo-l', caixa);
+  const botao = $('.combo-b', caixa), texto = $('.combo-v', caixa);
+  let opcoes = [], ativo = -1;
+  const fechar = () => { lista.hidden = true; caixa.classList.remove('aberto'); ativo = -1; };
+  const pintarBotao = () => {
+    if (digitavel) return;
+    const o = opcoes.find((x) => x.valor === campo.value);
+    texto.textContent = o ? o.rotulo : placeholder;
+    texto.classList.toggle('ph', !o);
+  };
+  const escolher = (valor) => {
+    campo.value = valor;
+    pintarBotao(); fechar();
+    campo.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const desenhar = () => {
+    const filtro = digitavel ? campo.value.trim().toLowerCase() : '';
+    const vis = opcoes.filter((o) => !filtro || `${o.valor} ${o.rotulo} ${o.sub || ''}`.toLowerCase().includes(filtro));
+    lista.innerHTML = vis.length ? vis.map((o, i) => `<div class="combo-o ${o.valor === campo.value ? 'sel' : ''} ${i === ativo ? 'ativo' : ''}" role="option" data-v="${esc(o.valor)}"><span>${esc(o.rotulo)}</span>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</div>`).join('') : '<div class="combo-nada">Nada encontrado</div>';
+    $$('.combo-o', lista).forEach((el) => (el.onmousedown = (e) => { e.preventDefault(); escolher(el.dataset.v); }));
+  };
+  const abrir = () => {
+    if (botao && botao.disabled) return;
+    $$('.combo.aberto').forEach((c) => { if (c !== caixa) { $('.combo-l', c).hidden = true; c.classList.remove('aberto'); } });
+    desenhar(); lista.hidden = false; caixa.classList.add('aberto');
+  };
+  const mover = (d) => {
+    const itens = $$('.combo-o', lista); if (!itens.length) return;
+    ativo = (ativo + d + itens.length) % itens.length;
+    itens.forEach((el, i) => el.classList.toggle('ativo', i === ativo));
+    itens[ativo].scrollIntoView({ block: 'nearest' });
+  };
+  const teclas = (e) => {
+    if (e.key === 'Escape') { fechar(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (lista.hidden) abrir(); mover(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (lista.hidden) abrir(); mover(-1); }
+    else if (e.key === 'Enter' && !lista.hidden && ativo >= 0) { e.preventDefault(); escolher($$('.combo-o', lista)[ativo].dataset.v); }
+  };
+  if (digitavel) {
+    campo.addEventListener('focus', abrir);
+    campo.addEventListener('click', abrir);
+    campo.addEventListener('input', () => { ativo = -1; abrir(); });
+    campo.addEventListener('keydown', teclas);
+    campo.addEventListener('blur', () => setTimeout(fechar, 120));
+    $('.combo-i svg', caixa).addEventListener('mousedown', (e) => { e.preventDefault(); if (lista.hidden) { campo.focus(); abrir(); } else fechar(); });
+  } else {
+    botao.addEventListener('click', () => (lista.hidden ? abrir() : fechar()));
+    botao.addEventListener('keydown', teclas);
+    botao.addEventListener('blur', () => setTimeout(fechar, 120));
+  }
+  return {
+    definir(novas, valor) {
+      opcoes = novas;
+      if (!digitavel) campo.value = valor !== undefined && opcoes.some((o) => o.valor === valor) ? valor : (opcoes[0] ? opcoes[0].valor : '');
+      pintarBotao();
+    },
+    desabilitar(sim, aviso = placeholder) {
+      if (!botao) return;
+      botao.disabled = sim;
+      if (sim) { campo.value = ''; texto.textContent = aviso; texto.classList.add('ph'); }
+    },
+  };
+}
+document.addEventListener('mousedown', (e) => { if (!e.target.closest('.combo')) $$('.combo.aberto').forEach((c) => { $('.combo-l', c).hidden = true; c.classList.remove('aberto'); }); });
+
 /* ============ telas ============ */
 const telas = {};
 let ciclo = 0; // descarta resposta de tela que já foi trocada
 
+const cabecalho = (icone, titulo, sub, acoes = '', extraTitulo = '') => `
+  <div class="bloco s3 listrado"><div class="cab"><div class="selo">${ic(icone)}</div><div><h1>${titulo}${extraTitulo}</h1>${sub ? `<p>${sub}</p>` : ''}</div></div></div>
+  <div class="bloco"><div class="cab-acoes">${acoes}</div></div>`;
+
 function montar(html, depois) {
   const app = $('#app');
-  app.innerHTML = `<div class="tela">${html}</div>`;
-  ativarBlocos(app);
+  app.innerHTML = html;
+  app.classList.remove('tela'); void app.offsetWidth; app.classList.add('tela');
+  ativarBlocos();
   animarNumeros(app);
   if (depois) depois(app);
 }
-const carregando = () => ($('#app').innerHTML = '<div class="tela carregando">Carregando…</div>');
-const falha = (e) => montar(`${aviso('erro', e.message)}<a class="btn" href="#/">Voltar ao dashboard</a>`);
+const carregando = () => ($('#app').innerHTML = '<div class="carregando">Carregando…</div>');
+const falha = (e) => montar(`<div class="bloco s4">${aviso('erro', e.message)}<br><a class="btn" href="#/">Voltar ao dashboard</a></div>`);
 
 /* ---------- dashboard ---------- */
 async function pool(itens, limite, fn) {
@@ -338,7 +512,7 @@ async function pool(itens, limite, fn) {
 }
 
 telas.dashboard = async (meu) => {
-  if (!$('#app .tela')) carregando();
+  if (!$('#app .bloco')) carregando();
   const ops = await ler(comData('/operacoes'));
   const resumos = await pool(ops, 6, (o) => ler(comData(`/operacoes/${idOp(o.numeroOperacao)}/resumo`)));
   if (meu !== ciclo) return;
@@ -351,33 +525,33 @@ telas.dashboard = async (meu) => {
   const recentes = ops.slice(0, 6);
 
   montar(`
-    <div class="titulo"><div><h1>Dashboard</h1><p>Acompanhe as operações${estado.dataRef ? ' em ' + dataBR(estado.dataRef) : ' de hoje'}.</p></div>
-      <div class="acoes"><button class="btn suave" id="atualizar">Atualizar</button><a class="btn primario" href="#/registrar">Registrar operação</a></div></div>
-    <div class="blocos">
-      <div class="bloco s2 listrado"><div class="hero">
-        <div><div class="rotulo">Operações</div><div class="grande" data-conta="${ops.length}" data-fmt="int">0</div>
-        <div class="sub">${porStatus.ATIVA + porStatus.EM_ATRASO + porStatus.INADIMPLENTE} em andamento · ${porStatus.LIQUIDADA} liquidada(s)</div></div>
-        <div class="servidor"><span class="ponto" id="ponto"></span><span id="servidor">${esc(location.host)}</span></div></div></div>
-      <div class="bloco"><div class="rotulo">Total contratado</div><div class="grande num" data-conta="${soma('totalContratado')}">R$ 0</div></div>
-      <div class="bloco"><div class="rotulo">Saldo devedor</div><div class="grande num" data-conta="${soma('saldoDevedor')}">R$ 0</div></div>
-      <div class="bloco"><div class="rotulo">Total pago</div><div class="grande num" data-conta="${soma('totalPago')}">R$ 0</div>
-        <div class="sub">descontos concedidos: ${R$(soma('descontoAntecipacao'))}</div></div>
-      <div class="bloco"><div class="rotulo">Vencido</div><div class="grande num" data-conta="${soma('valorVencido')}">R$ 0</div>
-        <div class="sub">+ ${R$(soma('encargosEmAberto'))} de encargos</div></div>
-      <div class="bloco s2"><h2>Por situação</h2><div class="barras">
-        ${Object.entries(porStatus).map(([s, n]) => `<div class="barra"><span>${chip(s)}</span><div class="trilho"><div class="preench ${s}" data-w="${(n / maior) * 100}"></div></div><strong class="num">${n}</strong></div>`).join('')}
-      </div></div>
-      <div class="bloco s2"><h2>Pedem atenção</h2>
-        ${atencao.length ? `<div class="tabela-wrap"><table><tbody>${atencao.map((o) => `<tr class="clicavel" data-op="${esc(o.numeroOperacao)}"><td><strong>${esc(o.numeroOperacao)}</strong></td><td>${chip(o.status)}</td><td class="dir num">${o.diasEmAtraso} dias</td></tr>`).join('')}</tbody></table></div>`
-        : '<div class="vazio"><strong>Tudo em dia</strong>Nenhuma operação com parcela vencida.</div>'}</div>
-      <div class="bloco s2 listrado"><h2>Atalhos</h2><div class="atalhos">
-        <a class="btn" href="#/pagar">Pagar parcela <span class="seta">→</span></a><a class="btn" href="#/amortizar">Amortizar <span class="seta">→</span></a>
-        <a class="btn" href="#/liquidar">Liquidar <span class="seta">→</span></a><a class="btn primario" href="#/registrar">Registrar operação <span class="seta">→</span></a></div></div>
-      <div class="bloco s4"><h2>Operações recentes</h2>
-        ${recentes.length ? `<div class="tabela-wrap"><table><thead><tr><th>Operação</th><th>Cliente</th><th>Situação</th><th class="dir">Contratado</th><th class="dir">Saldo devedor</th></tr></thead><tbody>
-        ${recentes.map((o) => `<tr class="clicavel" data-op="${esc(o.numeroOperacao)}"><td><strong>${esc(o.numeroOperacao)}</strong></td><td class="mudo">${esc(o.tipoPessoa)} · ${esc(o.clienteId)}</td><td>${chip(o.status)}</td><td class="dir num">${R$(o.condicoesFinanceiras.valorAprovado)}</td><td class="dir num">${R$(o.saldoDevedor)}</td></tr>`).join('')}</tbody></table></div>`
-        : '<div class="vazio"><strong>Nenhuma operação ainda</strong>Registre a primeira para ver o painel ganhar vida.<br><br><a class="btn primario" href="#/registrar">Registrar operação</a></div>'}</div>
-    </div>`, (app) => {
+    ${cabecalho('dashboard', 'Dashboard', `Acompanhe as operações${estado.dataRef ? ' em ' + dataBR(estado.dataRef) : ' de hoje'}.`,
+      `<button class="btn suave" id="atualizar">${ic('atualizar')} Atualizar</button><a class="btn primario" href="#/registrar">${ic('registrar')} Registrar</a>`)}
+    <div class="bloco s2 listrado"><div class="hero">
+      <div><div class="rotulo">${ic('operacoes')} Operações</div><div class="grande" data-conta="${ops.length}" data-fmt="int">0</div>
+      <div class="sub">${porStatus.ATIVA + porStatus.EM_ATRASO + porStatus.INADIMPLENTE} em andamento · ${porStatus.LIQUIDADA} liquidada(s)</div></div>
+      <div class="servidor"><span class="ponto" id="ponto"></span><span id="servidor">${esc(location.host)}</span></div></div></div>
+    <div class="bloco"><div class="rotulo">${ic('carteira')} Total contratado</div><div class="grande num" data-conta="${soma('totalContratado')}">R$ 0</div></div>
+    <div class="bloco"><div class="rotulo">${ic('saldo')} Saldo devedor</div><div class="grande num" data-conta="${soma('saldoDevedor')}">R$ 0</div></div>
+    <div class="bloco"><div class="rotulo">${ic('pago')} Total pago</div><div class="grande num" data-conta="${soma('totalPago')}">R$ 0</div>
+      <div class="sub">descontos concedidos: ${R$(soma('descontoAntecipacao'))}</div></div>
+    <div class="bloco"><div class="rotulo">${ic('alerta')} Vencido</div><div class="grande num" data-conta="${soma('valorVencido')}">R$ 0</div>
+      <div class="sub">+ ${R$(soma('encargosEmAberto'))} de encargos</div></div>
+    <div class="bloco s2"><h2>${ic('resumo')} Por situação</h2><div class="barras">
+      ${Object.entries(porStatus).map(([s, n]) => `<div class="barra"><span>${chip(s)}</span><div class="trilho"><div class="preench ${s}" data-w="${(n / maior) * 100}"></div></div><strong class="num">${n}</strong></div>`).join('')}
+    </div></div>
+    <div class="bloco s2"><h2>${ic('relogio')} Pedem atenção</h2>
+      ${atencao.length ? `<div class="tabela-wrap"><table><tbody>${atencao.map((o) => `<tr class="clicavel" data-op="${esc(o.numeroOperacao)}"><td><strong>${esc(o.numeroOperacao)}</strong></td><td>${chip(o.status)}</td><td class="dir num">${o.diasEmAtraso} dias</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="vazio"><strong>Tudo em dia</strong>Nenhuma operação com parcela vencida.</div>'}</div>
+    <div class="bloco s2 listrado"><h2>${ic('seta')} Atalhos</h2><div class="atalhos">
+      <a class="btn" href="#/pagar"><span class="t">${ic('pagar')} Pagar parcela</span><span class="seta">${ic('seta')}</span></a>
+      <a class="btn" href="#/amortizar"><span class="t">${ic('amortizar')} Amortizar</span><span class="seta">${ic('seta')}</span></a>
+      <a class="btn" href="#/liquidar"><span class="t">${ic('liquidar')} Liquidar</span><span class="seta">${ic('seta')}</span></a>
+      <a class="btn primario" href="#/registrar"><span class="t">${ic('registrar')} Registrar</span><span class="seta">${ic('seta')}</span></a></div></div>
+    <div class="bloco s2"><h2>${ic('lista')} Últimas operações</h2>
+      ${recentes.length ? `<div class="tabela-wrap"><table><thead><tr><th>Operação</th><th>Situação</th><th class="dir">Saldo devedor</th></tr></thead><tbody>
+      ${recentes.slice(0, 4).map((o) => `<tr class="clicavel" data-op="${esc(o.numeroOperacao)}"><td><strong>${esc(o.numeroOperacao)}</strong></td><td>${chip(o.status)}</td><td class="dir num">${R$(o.saldoDevedor)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="vazio"><strong>Nenhuma operação ainda</strong>Registre a primeira para ver o painel ganhar vida.<br><br><a class="btn primario" href="#/registrar">Registrar operação</a></div>'}</div>`, (app) => {
     $$('[data-op]', app).forEach((tr) => (tr.onclick = () => (location.hash = '#/operacoes/' + tr.dataset.op)));
     $('#atualizar', app).onclick = () => rotear();
     ler('/health').then(() => $('#ponto') && $('#ponto').classList.add('on')).catch(() => {});
@@ -396,13 +570,13 @@ telas.operacoes = async (meu) => {
       ${lista.map((o) => `<tr class="clicavel" data-op="${esc(o.numeroOperacao)}"><td><strong>${esc(o.numeroOperacao)}</strong></td><td class="mudo">${esc(o.tipoPessoa)} · ${esc(o.clienteId)}</td><td class="mudo">${esc(o.produto.nome)}</td><td>${chip(o.status)}</td><td class="dir num">${o.diasEmAtraso ? o.diasEmAtraso + ' d' : '—'}</td><td class="dir num">${R$(o.condicoesFinanceiras.valorAprovado)}</td><td class="dir num">${R$(o.saldoDevedor)}</td></tr>`).join('')}</tbody></table></div>`
       : '<div class="vazio"><strong>Nada por aqui</strong>Nenhuma operação encontrada com esse filtro.</div>';
   };
-  montar(`<div class="titulo"><div><h1>Operações</h1><p>${ops.length} no total. Clique numa linha para ver os detalhes.</p></div><a class="btn primario" href="#/registrar">Registrar operação</a></div>
-    <div class="blocos c2" style="grid-template-columns:1fr"><div class="bloco">
+  montar(`${cabecalho('operacoes', 'Operações', `${ops.length} no total. Clique numa linha para ver os detalhes.`, `<a class="btn primario" href="#/registrar">${ic('registrar')} Registrar</a>`)}
+    <div class="bloco s4">
       <div class="busca"><input id="busca" placeholder="Buscar por número ou documento"><div class="filtros" id="filtros">
         ${['TODAS', 'ATIVA', 'EM_ATRASO', 'INADIMPLENTE', 'LIQUIDADA'].map((s) => `<button data-f="${s}" class="${s === 'TODAS' ? 'ativo' : ''}">${s === 'TODAS' ? 'Todas' : ROTULO[s]}</button>`).join('')}</div></div>
-      <div id="tabela">${html()}</div></div></div>`, (app) => {
+      <div id="tabela">${html()}</div></div>`, (app) => {
     const ligar = () => $$('[data-op]', app).forEach((tr) => (tr.onclick = () => (location.hash = '#/operacoes/' + tr.dataset.op)));
-    const redesenhar = () => { $('#tabela', app).innerHTML = html(); ligar(); };
+    const redesenhar = () => { $('#tabela', app).innerHTML = html(); ligar(); ativarBlocos(); };
     $('#busca', app).oninput = (e) => { busca = e.target.value; redesenhar(); };
     $$('#filtros button', app).forEach((b) => (b.onclick = () => { filtro = b.dataset.f; $$('#filtros button', app).forEach((x) => x.classList.toggle('ativo', x === b)); redesenhar(); }));
     ligar();
@@ -418,19 +592,20 @@ telas.detalhe = async (meu, numero, aba = 'resumo') => {
   const cf = op.condicoesFinanceiras;
   const numOp = op.numeroOperacao;
   montar(`
-    <div class="titulo"><div><h1>${esc(numOp)} ${chip(op.status)}</h1><p>${esc(op.produto.nome)} · ${esc(op.tipoPessoa)} ${esc(op.clienteId)} · ${cf.quantidadeParcelas}x de taxa ${pct(cf.taxaJuros)} a.m. · ${esc(cf.sistemaAmortizacao)}</p></div>
-      <div class="acoes"><a class="btn primario" href="#/pagar?op=${esc(numOp)}">Pagar parcela</a><a class="btn" href="#/amortizar?op=${esc(numOp)}">Amortizar</a><a class="btn" href="#/liquidar?op=${esc(numOp)}">Liquidar</a></div></div>
-    <div class="abas" id="abas">${[['resumo', 'Resumo'], ['parcelas', 'Parcelas'], ['historico', 'Histórico']].map(([k, t]) => `<button data-a="${k}" class="${k === aba ? 'ativo' : ''}">${t}</button>`).join('')}</div>
+    ${cabecalho('contrato', esc(numOp), `${esc(op.produto.nome)} · ${esc(op.tipoPessoa)} ${esc(op.clienteId)} · ${cf.quantidadeParcelas}x de taxa ${pct(cf.taxaJuros)} a.m. · ${esc(cf.sistemaAmortizacao)}`,
+      `<a class="btn primario" href="#/pagar?op=${esc(numOp)}">${ic('pagar')} Pagar</a><a class="btn" href="#/amortizar?op=${esc(numOp)}">${ic('amortizar')} Amortizar</a><a class="btn" href="#/liquidar?op=${esc(numOp)}">${ic('liquidar')} Liquidar</a>`, ` ${chip(op.status)}`)}
+    <div class="bloco s4 abas" id="abas">${[['resumo', 'Resumo', 'resumo'], ['parcelas', 'Parcelas', 'parcelas'], ['historico', 'Histórico', 'historico']].map(([k, t, i]) => `<button data-a="${k}" class="${k === aba ? 'ativo' : ''}">${ic(i)} ${t}</button>`).join('')}</div>
     <div id="conteudo"></div>`, (app) => {
     const pintar = async (a) => {
       const alvo = $('#conteudo', app);
       alvo.innerHTML = '<div class="carregando">Carregando…</div>';
+      ativarBlocos();
       try {
         if (a === 'resumo') alvo.innerHTML = vistaResumo(resumo, op);
         if (a === 'parcelas') alvo.innerHTML = vistaParcelas(await ler(comData(`/operacoes/${id}/parcelas`)), numOp);
         if (a === 'historico') alvo.innerHTML = vistaHistorico(await ler(comData(`/operacoes/${id}/historico`)));
-        ativarBlocos(alvo); animarNumeros(alvo);
-      } catch (e) { alvo.innerHTML = aviso('erro', e.message); }
+      } catch (e) { alvo.innerHTML = `<div class="bloco s4">${aviso('erro', e.message)}</div>`; }
+      ativarBlocos(); animarNumeros(alvo);
     };
     $$('#abas button', app).forEach((b) => (b.onclick = () => { $$('#abas button', app).forEach((x) => x.classList.toggle('ativo', x === b)); pintar(b.dataset.a); }));
     pintar(aba);
@@ -438,19 +613,18 @@ telas.detalhe = async (meu, numero, aba = 'resumo') => {
 };
 
 function vistaResumo(r, op) {
-  const kpi = (rot, v, sub, cls = '') => `<div class="bloco ${cls}"><div class="rotulo">${rot}</div><div class="grande num" data-conta="${v}">R$ 0</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
-  return `<div class="blocos">
-    <div class="bloco s2 listrado"><div class="rotulo">Para quitar hoje</div><div class="grande num" data-conta="${r.valorParaQuitar}">R$ 0</div><div class="sub">em ${dataBR(r.dataReferencia)}${r.diasEmAtraso ? ` · ${r.diasEmAtraso} dias de atraso` : ''}</div></div>
-    ${kpi('Saldo devedor', r.saldoDevedor)}${kpi('Contratado', r.totalContratado, 'liberado ' + R$(op.valorLiberado))}
-    ${kpi('Total pago', r.totalPago, `amortizado ${R$(r.valorAmortizado)}`)}${kpi('Juros pagos', r.jurosPagos)}${kpi('Encargos pagos', r.encargosPagos, 'multa + mora')}
-    ${kpi('Vencido', r.valorVencido, `+ ${R$(r.encargosEmAberto)} de encargos`)}${kpi('Previsto no calendário', r.totalPrevisto, 'soma das parcelas originais', 's2')}${kpi('Desconto concedido', r.descontoAntecipacao, 'em antecipações', 's2')}
-  </div>`;
+  const kpi = (icone, rot, v, sub, cls = '') => `<div class="bloco ${cls}"><div class="rotulo">${ic(icone)} ${rot}</div><div class="grande num" data-conta="${v}">R$ 0</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+  return `
+    <div class="bloco s2 listrado"><div class="rotulo">${ic('liquidar')} Para quitar hoje</div><div class="grande num" data-conta="${r.valorParaQuitar}">R$ 0</div><div class="sub">em ${dataBR(r.dataReferencia)}${r.diasEmAtraso ? ` · ${r.diasEmAtraso} dias de atraso` : ''}</div></div>
+    ${kpi('saldo', 'Saldo devedor', r.saldoDevedor)}${kpi('carteira', 'Contratado', r.totalContratado, 'liberado ' + R$(op.valorLiberado))}
+    ${kpi('pago', 'Total pago', r.totalPago, `amortizado ${R$(r.valorAmortizado)}`)}${kpi('tag', 'Juros pagos', r.jurosPagos)}${kpi('alerta', 'Encargos pagos', r.encargosPagos, 'multa + mora')}
+    ${kpi('relogio', 'Vencido', r.valorVencido, `+ ${R$(r.encargosEmAberto)} de encargos`)}${kpi('calendario2', 'Previsto no calendário', r.totalPrevisto, 'soma das parcelas originais', 's2')}${kpi('desconto', 'Desconto concedido', r.descontoAntecipacao, 'em antecipações', 's2')}`;
 }
 
 function vistaParcelas(ps, numOp) {
-  return `<div class="blocos" style="grid-template-columns:1fr"><div class="bloco"><div class="tabela-wrap"><table><thead><tr><th>#</th><th>Vencimento</th><th class="dir">Valor</th><th class="dir">Juros</th><th class="dir">Amortização</th><th>Situação</th><th class="dir">Em aberto</th><th class="dir">Encargos</th><th class="dir">Para quitar</th><th></th></tr></thead><tbody>
+  return `<div class="bloco s4"><div class="tabela-wrap"><table><thead><tr><th>#</th><th>Vencimento</th><th class="dir">Valor</th><th class="dir">Juros</th><th class="dir">Amortização</th><th>Situação</th><th class="dir">Em aberto</th><th class="dir">Encargos</th><th class="dir">Para quitar</th><th></th></tr></thead><tbody>
     ${ps.map((p) => `<tr><td><strong>${p.numero}</strong></td><td>${dataBR(p.vencimento)}${p.diasEmAtraso ? ` <span class="mudo">(${p.diasEmAtraso} d)</span>` : ''}</td><td class="dir num">${R$(p.valorParcela)}</td><td class="dir num mudo">${R$(p.juros)}</td><td class="dir num mudo">${R$(p.amortizacao)}</td><td>${chip(p.status)}</td><td class="dir num">${R$(p.valorEmAberto)}</td><td class="dir num">${R$(p.encargos.total)}</td><td class="dir num"><strong>${R$(p.totalParaQuitar)}</strong></td>
-      <td class="dir">${p.status === 'PAGA' ? '' : `<a class="btn mini" href="#/pagar?op=${esc(numOp)}&parcela=${p.numero}">Pagar</a>`}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+      <td class="dir">${p.status === 'PAGA' ? '' : `<a class="btn mini" href="#/pagar?op=${esc(numOp)}&parcela=${p.numero}">Pagar</a>`}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 
 function descricaoItem(i) {
@@ -460,27 +634,27 @@ function descricaoItem(i) {
 }
 
 function vistaHistorico(itens) {
-  if (!itens.length) return '<div class="vazio"><strong>Sem eventos</strong>Esta operação ainda não tem histórico gravado.</div>';
+  if (!itens.length) return '<div class="bloco s4"><div class="vazio"><strong>Sem eventos</strong>Esta operação ainda não tem histórico gravado.</div></div>';
   const dist = (l) => [['multa', l.multa], ['mora', l.jurosMora], ['juros', l.juros], ['amortização', l.amortizacao], ['desconto', l.desconto]].filter(([, v]) => v > 0).map(([k, v]) => `${k} ${R$(v)}`).join(' · ');
-  return `<div class="blocos" style="grid-template-columns:1fr"><div class="bloco"><div class="linha-tempo">${itens.map((i) => `
+  return `<div class="bloco s4"><div class="linha-tempo">${itens.map((i) => `
     <div class="evento ${esc(i.origem)}"><div class="data">${dataBR(i.dataEfeito)}</div><div class="pino"></div><div>
       <h3>${esc(TIPO[i.tipo] || i.tipo)} ${chip(i.origem)}${i.valor != null ? ` <span class="num">${R$(i.valor)}</span>` : ''}</h3>
       <div class="det">${esc(descricaoItem(i))}${i.identificadorPagamento ? ` · id ${esc(i.identificadorPagamento)}` : ''}${i.origemPagamento ? ` · ${esc(i.origemPagamento)}` : ''}${i.registradoEm ? `${i.tipo === 'OPERACAO_REGISTRADA' ? '' : ' · '}registrado em ${new Date(i.registradoEm).toLocaleString('pt-BR')}` : ''}</div>
       ${(i.lancamentos || []).map((l) => `<div class="det">${l.numeroParcela ? 'Parcela ' + l.numeroParcela : 'Parcelas a vencer'}: ${dist(l)}</div>`).join('')}
-    </div></div>`).join('')}</div></div></div>`;
+    </div></div>`).join('')}</div></div>`;
 }
 
 /* ---------- formulários: elementos comuns ---------- */
 function paramsDaRota() { return new URLSearchParams((location.hash.split('?')[1]) || ''); }
 async function opcoesDeOperacao() {
-  try { return (await ler('/operacoes')).filter((o) => o.status !== 'LIQUIDADA').map((o) => o.numeroOperacao); } catch (e) { return []; }
+  try { return (await ler('/operacoes')).filter((o) => o.status !== 'LIQUIDADA').map((o) => ({ valor: o.numeroOperacao, rotulo: o.numeroOperacao, sub: `${ROTULO[o.status]} · ${R$(o.saldoDevedor)}` })); } catch (e) { return []; }
 }
-const campoOp = (lista, valor) => `<label>Operação<input id="op" list="ops" value="${esc(valor)}" placeholder="OP-2026-0001 ou id" required autocomplete="off"><datalist id="ops">${lista.map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>`;
-const campoData = (id, rotulo, ajuda) => `<label>${rotulo}<input type="date" id="${id}" value="${estado.dataRef || hojeISO()}">${ajuda ? `<small>${ajuda}</small>` : ''}</label>`;
+const campoOp = (valor, cls = 's2') => `<div class="campo ${cls}"><span class="rot">${ic('contrato')} Operação</span>${htmlCombo('op', { digitavel: true, placeholder: 'OP-2026-0001 ou id', valor })}</div>`;
+const campoData = (id, rotulo, ajuda, cls = '') => `<label class="campo ${cls}"><span class="rot">${ic('calendario')} ${rotulo}</span><input type="date" id="${id}" value="${estado.dataRef || hojeISO()}">${ajuda ? `<small>${ajuda}</small>` : ''}</label>`;
 const tokenUnico = (p) => `${p}-${Date.now().toString(36)}`;
 const paraNumero = (txt) => Number(String(txt).replace(/\./g, '').replace(',', '.'));
 function resultadoBloco(titulo, linhas, extra = '') {
-  return `<div class="blocos" style="grid-template-columns:1fr;margin-top:20px"><div class="bloco listrado"><h2>${esc(titulo)}</h2><dl class="kv">${linhas.map(([k, v]) => `<dt>${esc(k)}</dt><dd class="num">${esc(v)}</dd>`).join('')}</dl>${extra}</div></div>`;
+  return `<div class="bloco s4 listrado"><h2>${ic('liquidar')} ${esc(titulo)}</h2><dl class="kv">${linhas.map(([k, v]) => `<dt>${esc(k)}</dt><dd class="num">${esc(v)}</dd>`).join('')}</dl>${extra ? `<div style="margin-top:16px">${extra}</div>` : ''}</div>`;
 }
 
 /* ---------- pagar ---------- */
@@ -488,15 +662,21 @@ telas.pagar = async (meu) => {
   const p = paramsDaRota();
   const lista = await opcoesDeOperacao();
   if (meu !== ciclo) return;
-  montar(`<div class="titulo"><div><h1>Pagar parcela</h1><p>Vale para as parcelas vencidas e a próxima a vencer. O valor abate multa, mora, juros e amortização, nessa ordem.</p></div></div>
-    <div class="blocos" style="grid-template-columns:1fr"><div class="bloco"><form class="form" id="f"><div class="campos">
-      ${campoOp(lista, p.get('op') || '')}
-      <label>Parcela<select id="parcela" disabled><option>Escolha a operação</option></select><small id="dicaParcela"></small></label>
-      <label>Valor (R$)<input id="valor" inputmode="decimal" placeholder="0,00" required></label>
+  montar(`${cabecalho('pagar', 'Pagar parcela', 'Vale para as parcelas vencidas e a próxima a vencer. O valor abate multa, mora, juros e amortização, nessa ordem.')}
+    <form id="f" autocomplete="off">
+      ${campoOp(p.get('op') || '')}
+      <div class="campo s2"><span class="rot">${ic('parcelas')} Parcela</span>${htmlCombo('parcela', { placeholder: 'Escolha a operação' })}<small id="dicaParcela"></small></div>
+      <label class="campo"><span class="rot">${ic('pago')} Valor (R$)</span><input id="valor" inputmode="decimal" placeholder="0,00" required></label>
       ${campoData('data', 'Data do pagamento')}
-      <label><span>Origem <small>(opcional)</small></span><input id="origem" maxlength="30" placeholder="CLIENTE, BOLETO, INSS…"></label>
-    </div><div id="aviso"></div><div class="acoes"><button class="btn primario" type="submit">Registrar pagamento</button><button class="btn suave" type="button" id="quitar" disabled>Preencher valor para quitar</button></div></form>
-    <div id="saida"></div></div></div>`, (app) => {
+      <label class="campo s2"><span class="rot">${ic('tag')} Origem <small>(opcional)</small></span><input id="origem" maxlength="30" placeholder="CLIENTE, BOLETO, INSS…"></label>
+      <div class="aviso-cel" id="aviso"></div>
+      <div class="acoes cel"><button class="btn primario" type="submit">${ic('pagar')} Registrar pagamento</button><button class="btn suave" type="button" id="quitar" disabled>Preencher valor para quitar</button></div>
+      <div id="saida"></div>
+    </form>`, (app) => {
+    const cOp = ligarCombo(app, 'op', { digitavel: true });
+    const cParcela = ligarCombo(app, 'parcela', { placeholder: 'Escolha a operação' });
+    cOp.definir(lista);
+    cParcela.desabilitar(true, 'Escolha a operação');
     let parcelas = [];
     const dica = () => {
       const par = parcelas.find((x) => String(x.numero) === $('#parcela', app).value);
@@ -504,26 +684,27 @@ telas.pagar = async (meu) => {
       $('#dicaParcela', app).textContent = par ? `Para quitar em ${dataBR(estado.dataRef || hojeISO())}: ${R$(par.totalParaQuitar)}` : '';
     };
     const carregarParcelas = async (limpar = true) => {
-      const sel = $('#parcela', app), op = $('#op', app).value.trim();
+      const op = $('#op', app).value.trim();
       if (!op) return;
       try {
-        parcelas = (await ler(comData(`/operacoes/${idOp(op)}/parcelas`, estado.dataRef ? '' : ''))).filter((x) => x.status !== 'PAGA');
-        sel.disabled = !parcelas.length;
-        sel.innerHTML = parcelas.length ? parcelas.map((x) => `<option value="${x.numero}">${x.numero} · vence ${dataBR(x.vencimento)} · ${ROTULO[x.status]}</option>`).join('') : '<option>Todas pagas</option>';
-        if (p.get('parcela') && parcelas.some((x) => String(x.numero) === p.get('parcela'))) sel.value = p.get('parcela');
+        parcelas = (await ler(comData(`/operacoes/${idOp(op)}/parcelas`))).filter((x) => x.status !== 'PAGA');
+        cParcela.desabilitar(false);
+        cParcela.definir(parcelas.map((x) => ({ valor: String(x.numero), rotulo: `Parcela ${x.numero} · vence ${dataBR(x.vencimento)}`, sub: ROTULO[x.status] })), p.get('parcela') || undefined);
+        if (!parcelas.length) cParcela.desabilitar(true, 'Todas as parcelas estão pagas');
         if (limpar) $('#aviso', app).innerHTML = '';
-      } catch (e) { sel.disabled = true; sel.innerHTML = '<option>—</option>'; parcelas = []; $('#aviso', app).innerHTML = aviso('erro', e.message); }
-      dica();
+      } catch (e) { parcelas = []; cParcela.desabilitar(true, '—'); $('#aviso', app).innerHTML = aviso('erro', e.message); }
+      dica(); ativarBlocos();
     };
-    $('#op', app).onchange = carregarParcelas;
-    $('#parcela', app).onchange = dica;
+    $('#op', app).addEventListener('change', () => carregarParcelas());
+    $('#parcela', app).addEventListener('change', dica);
     $('#quitar', app).onclick = () => { const par = parcelas.find((x) => String(x.numero) === $('#parcela', app).value); if (par) $('#valor', app).value = String(par.totalParaQuitar).replace('.', ','); };
     if ($('#op', app).value) carregarParcelas();
     $('#f', app).onsubmit = async (e) => {
       e.preventDefault();
       const op = $('#op', app).value.trim(), num = $('#parcela', app).value, valor = Math.round(paraNumero($('#valor', app).value) * 100) / 100;
       const data = $('#data', app).value, origem = $('#origem', app).value.trim();
-      if (!(valor > 0)) { $('#aviso', app).innerHTML = aviso('erro', 'Informe um valor maior que zero.'); return; }
+      if (!op || !num) { $('#aviso', app).innerHTML = aviso('erro', 'Escolha a operação e a parcela.'); ativarBlocos(); return; }
+      if (!(valor > 0)) { $('#aviso', app).innerHTML = aviso('erro', 'Informe um valor maior que zero.'); ativarBlocos(); return; }
       if (!(await confirmar({ titulo: 'Registrar pagamento?', texto: 'O pagamento fica gravado no histórico e não pode ser desfeito.', linhas: [['Operação', op], ['Parcela', num], ['Valor', R$(valor)], ['Data', dataBR(data)]], ok: 'Registrar' }))) return;
       const corpo = { valor, dataPagamento: data, identificadorPagamento: tokenUnico('web') };
       if (origem) corpo.origem = origem;
@@ -532,10 +713,10 @@ telas.pagar = async (meu) => {
         $('#aviso', app).innerHTML = aviso('ok', status === 201 ? 'Pagamento registrado.' : 'Esse pagamento já estava registrado.');
         $('#saida', app).innerHTML = resultadoBloco('Como o dinheiro foi aplicado', [['Multa', R$(r.distribuicao.multa)], ['Juros de mora', R$(r.distribuicao.jurosMora)], ['Juros', R$(r.distribuicao.juros)], ['Amortização', R$(r.distribuicao.amortizacao)],
           ['Parcela ' + r.parcela.numero, (ROTULO[r.parcela.status] || r.parcela.status) + ' · falta ' + R$(r.parcela.valorEmAberto + r.parcela.encargosEmAberto)], ['Situação da operação', ROTULO[r.operacao.status] || r.operacao.status], ['Saldo devedor', R$(r.operacao.saldoDevedor)]],
-          `<div class="acoes"><a class="btn" href="#/operacoes/${esc(r.operacao.numeroOperacao)}">Ver operação</a></div>`);
-        ativarBlocos($('#saida', app));
+          `<a class="btn" href="#/operacoes/${esc(r.operacao.numeroOperacao)}">${ic('contrato')} Ver operação</a>`);
         carregarParcelas(false);
       } catch (er) { $('#aviso', app).innerHTML = aviso('erro', er.message); }
+      ativarBlocos();
     };
   });
 };
@@ -545,36 +726,40 @@ telas.amortizar = async (meu) => {
   const p = paramsDaRota();
   const lista = await opcoesDeOperacao();
   if (meu !== ciclo) return;
-  montar(`<div class="titulo"><div><h1>Amortização antecipada</h1><p>Quita as últimas parcelas pelo valor presente, com desconto dos juros que ainda não correram. Só vale sem parcela vencida.</p></div></div>
-    <div class="blocos" style="grid-template-columns:1fr"><div class="bloco"><form class="form" id="f"><div class="campos">
-      ${campoOp(lista, p.get('op') || '')}
-      <label>Quantas parcelas<input id="qtd" type="number" min="1" step="1" value="2" required></label>
+  montar(`${cabecalho('amortizar', 'Amortização antecipada', 'Quita as últimas parcelas pelo valor presente, com desconto dos juros que ainda não correram. Só vale sem parcela vencida.')}
+    <form id="f" autocomplete="off">
+      ${campoOp(p.get('op') || '')}
+      <label class="campo"><span class="rot">${ic('parcelas')} Quantas parcelas</span><input id="qtd" type="number" min="1" step="1" value="2" required></label>
       ${campoData('data', 'Data', 'Vale para a simulação e para o pagamento')}
-    </div><div id="aviso"></div><div class="acoes"><button class="btn primario" type="submit">Simular</button></div></form><div id="saida"></div></div></div>`, (app) => {
-    const ler3 = () => ({ op: $('#op', app).value.trim(), qtd: Number($('#qtd', app).value), data: $('#data', app).value });
+      <div class="aviso-cel" id="aviso"></div>
+      <div class="acoes cel"><button class="btn primario" type="submit">${ic('amortizar')} Simular</button></div>
+      <div id="saida"></div>
+    </form>`, (app) => {
+    ligarCombo(app, 'op', { digitavel: true }).definir(lista);
     $('#f', app).onsubmit = async (e) => {
       e.preventDefault();
-      const { op, qtd, data } = ler3();
+      const op = $('#op', app).value.trim(), qtd = Number($('#qtd', app).value), data = $('#data', app).value;
       try {
         const s = await ler(`/operacoes/${idOp(op)}/amortizacoes/simulacao?quantidadeParcelas=${qtd}&dataReferencia=${data}`);
         $('#aviso', app).innerHTML = '';
-        $('#saida', app).innerHTML = `<div class="blocos" style="grid-template-columns:1fr;margin-top:20px"><div class="bloco listrado"><h2>Simulação</h2>
+        $('#saida', app).innerHTML = `<div class="bloco s4 listrado"><h2>${ic('amortizar')} Simulação</h2>
           <div class="tabela-wrap"><table><thead><tr><th>#</th><th>Vencimento</th><th class="dir">Valor da parcela</th><th class="dir">Valor presente</th><th class="dir">Desconto</th><th class="dir">Amortização</th><th class="dir">Juros</th></tr></thead><tbody>
           ${s.parcelas.map((x) => `<tr><td><strong>${x.numero}</strong></td><td>${dataBR(x.vencimento)}</td><td class="dir num">${R$(x.valorParcela)}</td><td class="dir num">${R$(x.valorPresente)}</td><td class="dir num">${R$(x.desconto)}</td><td class="dir num">${R$(x.amortizacao)}</td><td class="dir num">${R$(x.juros)}</td></tr>`).join('')}</tbody></table></div>
           <dl class="kv" style="margin-top:16px"><dt>Total a pagar</dt><dd class="num">${R$(s.totais.valorAPagar)}</dd><dt>Desconto total</dt><dd class="num">${R$(s.totais.desconto)}</dd><dt>Saldo devedor</dt><dd class="num">${R$(s.saldoDevedorAntes)} → ${R$(s.saldoDevedorApos)}</dd><dt>Parcelas que continuam</dt><dd>${s.quantidadeParcelasRestantes}</dd></dl>
-          <div class="acoes"><button class="btn primario" id="confirmar">Confirmar amortização</button></div></div></div>`;
-        ativarBlocos($('#saida', app));
+          <div class="acoes" style="margin-top:16px"><button class="btn primario" type="button" id="confirmar">${ic('liquidar')} Confirmar amortização</button></div></div>`;
+        ativarBlocos();
         $('#confirmar', app).onclick = async () => {
           if (!(await confirmar({ titulo: 'Registrar amortização?', texto: 'As parcelas ficam quitadas e a tabela das que sobram é recalculada.', linhas: [['Operação', op], ['Parcelas', String(qtd)], ['Total a pagar', R$(s.totais.valorAPagar)], ['Data', dataBR(data)]], ok: 'Registrar' }))) return;
           try {
             const { corpo: r } = await api(`/operacoes/${idOp(op)}/amortizacoes`, { method: 'POST', body: { quantidadeParcelas: qtd, dataPagamento: data, identificadorPagamento: tokenUnico('web') } });
             $('#aviso', app).innerHTML = aviso('ok', 'Amortização registrada.');
             $('#saida', app).innerHTML = resultadoBloco('Amortização registrada', [['Parcelas quitadas', r.lancamentos.map((x) => x.numero).join(', ')], ['Total pago', R$(r.totais.valorAPagar)], ['Desconto', R$(r.totais.desconto)], ['Saldo devedor', R$(r.saldoDevedorAntes) + ' → ' + R$(r.saldoDevedorApos)]],
-              `<div class="acoes"><a class="btn" href="#/operacoes/${esc(r.numeroOperacao)}">Ver operação</a></div>`);
-            ativarBlocos($('#saida', app));
+              `<a class="btn" href="#/operacoes/${esc(r.numeroOperacao)}">${ic('contrato')} Ver operação</a>`);
           } catch (er) { $('#aviso', app).innerHTML = aviso('erro', er.message); }
+          ativarBlocos();
         };
       } catch (er) { $('#saida', app).innerHTML = ''; $('#aviso', app).innerHTML = aviso('erro', er.message); }
+      ativarBlocos();
     };
   });
 };
@@ -584,33 +769,39 @@ telas.liquidar = async (meu) => {
   const p = paramsDaRota();
   const lista = await opcoesDeOperacao();
   if (meu !== ciclo) return;
-  montar(`<div class="titulo"><div><h1>Liquidação antecipada</h1><p>Quita a operação inteira: parcelas vencidas com encargos mais as a vencer pelo valor presente, sem tarifa.</p></div></div>
-    <div class="blocos" style="grid-template-columns:1fr"><div class="bloco"><form class="form" id="f"><div class="campos">
-      ${campoOp(lista, p.get('op') || '')}${campoData('data', 'Data', 'Vale para a consulta e para o pagamento')}
-    </div><div id="aviso"></div><div class="acoes"><button class="btn primario" type="submit">Ver valor para quitar</button></div></form><div id="saida"></div></div></div>`, (app) => {
+  montar(`${cabecalho('liquidar', 'Liquidação antecipada', 'Quita a operação inteira: parcelas vencidas com encargos mais as a vencer pelo valor presente, sem tarifa.')}
+    <form id="f" autocomplete="off">
+      ${campoOp(p.get('op') || '')}
+      ${campoData('data', 'Data', 'Vale para a consulta e para o pagamento', 's2')}
+      <div class="aviso-cel" id="aviso"></div>
+      <div class="acoes cel"><button class="btn primario" type="submit">${ic('liquidar')} Ver valor para quitar</button></div>
+      <div id="saida"></div>
+    </form>`, (app) => {
+    ligarCombo(app, 'op', { digitavel: true }).definir(lista);
     $('#f', app).onsubmit = async (e) => {
       e.preventDefault();
       const op = $('#op', app).value.trim(), data = $('#data', app).value;
       try {
         const v = await ler(`/operacoes/${idOp(op)}/liquidacao?dataReferencia=${data}`);
         $('#aviso', app).innerHTML = '';
-        $('#saida', app).innerHTML = `<div class="blocos c3" style="margin-top:20px">
-          <div class="bloco s2 listrado"><div class="rotulo">Valor para quitar em ${dataBR(v.dataReferencia)}</div><div class="grande num">${R$(v.valorParaQuitar)}</div><div class="sub">saldo devedor ${R$(v.saldoDevedor)}</div></div>
-          <div class="bloco"><div class="rotulo">Desconto</div><div class="grande num">${R$(v.aVencer.desconto)}</div><div class="sub">sobre ${R$(v.aVencer.valorNominal)} a vencer</div></div>
-          <div class="bloco"><div class="rotulo">Vencidas (${v.vencidas.parcelas.length})</div><div class="grande num">${R$(v.vencidas.total)}</div><div class="sub">com multa e mora</div></div>
-          <div class="bloco s2"><div class="rotulo">A vencer (${v.aVencer.parcelas.length}) pelo valor presente</div><div class="grande num">${R$(v.aVencer.valorPresente)}</div><div class="sub">principal ${R$(v.aVencer.amortizacao)} + juros ${R$(v.aVencer.juros)}</div></div>
-          <div class="bloco s3"><div class="acoes"><button class="btn primario" id="quitar">Quitar operação</button></div></div></div>`;
-        ativarBlocos($('#saida', app));
+        $('#saida', app).innerHTML = `
+          <div class="bloco s2 listrado"><div class="rotulo">${ic('liquidar')} Valor para quitar em ${dataBR(v.dataReferencia)}</div><div class="grande num">${R$(v.valorParaQuitar)}</div><div class="sub">saldo devedor ${R$(v.saldoDevedor)}</div></div>
+          <div class="bloco"><div class="rotulo">${ic('desconto')} Desconto</div><div class="grande num">${R$(v.aVencer.desconto)}</div><div class="sub">sobre ${R$(v.aVencer.valorNominal)} a vencer</div></div>
+          <div class="bloco"><div class="rotulo">${ic('alerta')} Vencidas (${v.vencidas.parcelas.length})</div><div class="grande num">${R$(v.vencidas.total)}</div><div class="sub">com multa e mora</div></div>
+          <div class="bloco s2"><div class="rotulo">${ic('calendario2')} A vencer (${v.aVencer.parcelas.length}) pelo valor presente</div><div class="grande num">${R$(v.aVencer.valorPresente)}</div><div class="sub">principal ${R$(v.aVencer.amortizacao)} + juros ${R$(v.aVencer.juros)}</div></div>
+          <div class="bloco s2 listrado" style="display:flex;align-items:center"><button class="btn primario" type="button" id="quitar">${ic('liquidar')} Quitar operação</button></div>`;
+        ativarBlocos();
         $('#quitar', app).onclick = async () => {
           if (!(await confirmar({ titulo: 'Quitar a operação?', texto: 'Todas as parcelas ficam pagas e a operação é liquidada. Não pode ser desfeito.', linhas: [['Operação', op], ['Valor', R$(v.valorParaQuitar)], ['Data', dataBR(data)]], ok: 'Quitar' }))) return;
           try {
             const { corpo: r } = await api(`/operacoes/${idOp(op)}/liquidacao`, { method: 'POST', body: { valor: v.valorParaQuitar, dataPagamento: data, identificadorPagamento: tokenUnico('web') } });
             $('#aviso', app).innerHTML = aviso('ok', 'Operação liquidada.');
-            $('#saida', app).innerHTML = resultadoBloco('Operação liquidada', [['Valor pago', R$(r.valor)], ['Situação', ROTULO[r.operacao.status]], ['Saldo devedor', R$(r.operacao.saldoDevedor)]], `<div class="acoes"><a class="btn" href="#/operacoes/${esc(r.operacao.numeroOperacao)}">Ver operação</a></div>`);
-            ativarBlocos($('#saida', app));
+            $('#saida', app).innerHTML = resultadoBloco('Operação liquidada', [['Valor pago', R$(r.valor)], ['Situação', ROTULO[r.operacao.status]], ['Saldo devedor', R$(r.operacao.saldoDevedor)]], `<a class="btn" href="#/operacoes/${esc(r.operacao.numeroOperacao)}">${ic('contrato')} Ver operação</a>`);
           } catch (er) { $('#aviso', app).innerHTML = aviso('erro', er.message); }
+          ativarBlocos();
         };
       } catch (er) { $('#saida', app).innerHTML = ''; $('#aviso', app).innerHTML = aviso('erro', er.message); }
+      ativarBlocos();
     };
   });
 };
@@ -618,37 +809,42 @@ telas.liquidar = async (meu) => {
 /* ---------- registrar ---------- */
 telas.registrar = async () => {
   const novoNumero = () => `OP-${new Date().getFullYear()}-${String(Math.floor(1000 + Math.random() * 9000))}`;
-  const exemplo = () => { const c = JSON.parse(JSON.stringify(EXEMPLO_JURO)); return JSON.stringify(c, null, 2); };
-  montar(`<div class="titulo"><div><h1>Registrar operação</h1><p>Cole o JSON que o serviço de juros envia (a operação já definida, com o calendário). O exemplo PRICE já vem preenchido.</p></div></div>
-    <div class="blocos" style="grid-template-columns:1fr"><div class="bloco"><form class="form" id="f">
-      <label>Payload do juros<textarea id="json" spellcheck="false"></textarea></label>
-      <div id="aviso"></div>
-      <div class="acoes"><button class="btn primario" type="submit">Registrar operação</button><button class="btn suave" type="button" id="novo">Trocar número da operação</button><button class="btn suave" type="button" id="reset">Voltar ao exemplo</button></div>
-    </form></div></div>`, (app) => {
+  const exemplo = () => JSON.stringify(JSON.parse(JSON.stringify(EXEMPLO_JURO)), null, 2);
+  montar(`${cabecalho('registrar', 'Registrar operação', 'Cole o JSON que o serviço de juros envia (a operação já definida, com o calendário). O exemplo PRICE já vem preenchido.')}
+    <form id="f">
+      <label class="campo s4"><span class="rot">${ic('contrato')} Payload do juros</span><textarea id="json" spellcheck="false"></textarea></label>
+      <div class="aviso-cel" id="aviso"></div>
+      <div class="acoes cel"><button class="btn primario" type="submit">${ic('registrar')} Registrar operação</button><button class="btn suave" type="button" id="novo">Trocar número da operação</button><button class="btn suave" type="button" id="reset">Voltar ao exemplo</button></div>
+    </form>`, (app) => {
     const ta = $('#json', app);
     ta.value = exemplo();
     $('#reset', app).onclick = () => { ta.value = exemplo(); };
-    $('#novo', app).onclick = () => { try { const o = JSON.parse(ta.value); o.operacao.identificador = novoNumero(); ta.value = JSON.stringify(o, null, 2); } catch (e) { $('#aviso', app).innerHTML = aviso('erro', 'O JSON não está válido.'); } };
+    $('#novo', app).onclick = () => { try { const o = JSON.parse(ta.value); o.operacao.identificador = novoNumero(); ta.value = JSON.stringify(o, null, 2); } catch (e) { $('#aviso', app).innerHTML = aviso('erro', 'O JSON não está válido.'); ativarBlocos(); } };
     $('#f', app).onsubmit = async (e) => {
       e.preventDefault();
       let obj;
-      try { obj = JSON.parse(ta.value); } catch (er) { $('#aviso', app).innerHTML = aviso('erro', 'O JSON não está válido: ' + er.message); return; }
+      try { obj = JSON.parse(ta.value); } catch (er) { $('#aviso', app).innerHTML = aviso('erro', 'O JSON não está válido: ' + er.message); ativarBlocos(); return; }
       try {
         const { corpo: r, status } = await api('/operacoes', { method: 'POST', body: obj });
         $('#aviso', app).innerHTML = aviso('ok', status === 201 ? `Operação ${r.numeroOperacao} registrada.` : `A operação ${r.numeroOperacao} já estava registrada.`);
+        ativarBlocos();
         setTimeout(() => (location.hash = '#/operacoes/' + r.numeroOperacao), 900);
-      } catch (er) { $('#aviso', app).innerHTML = aviso('erro', er.message); }
+      } catch (er) { $('#aviso', app).innerHTML = aviso('erro', er.message); ativarBlocos(); }
     };
   });
 };
 
 /* ============ roteador ============ */
+const NAV = [['', 'Dashboard', 'dashboard'], ['operacoes', 'Operações', 'operacoes'], ['pagar', 'Pagar parcela', 'pagar'], ['amortizar', 'Amortização', 'amortizar'], ['liquidar', 'Liquidação', 'liquidar'], ['registrar', 'Registrar', 'registrar']];
+$('.ico-ref').innerHTML = ic('calendario');
+$('#nav').innerHTML = NAV.map(([r, t, i]) => `<a href="#/${r}" data-r="${r}">${ic(i)} ${t}</a>`).join('');
+
 function rotear() {
   const [caminho] = location.hash.replace(/^#\/?/, '').split('?');
   const partes = caminho.split('/').filter(Boolean);
   const meu = ++ciclo;
   const rota = partes[0] || '';
-  $$('#nav a').forEach((a) => a.classList.toggle('ativo', a.dataset.r === rota || (rota === 'operacoes' && a.dataset.r === 'operacoes')));
+  $$('#nav a').forEach((a) => a.classList.toggle('ativo', a.dataset.r === rota));
   let tarefa;
   if (rota === '') tarefa = telas.dashboard(meu);
   else if (rota === 'operacoes' && partes[1]) tarefa = telas.detalhe(meu, decodeURIComponent(partes[1]), partes[2]);
@@ -659,8 +855,8 @@ function rotear() {
 }
 window.addEventListener('hashchange', rotear);
 
-$('#dataRef').addEventListener('change', (e) => { estado.dataRef = e.target.value; rotear(); });
-$('#hoje').addEventListener('click', () => { estado.dataRef = ''; $('#dataRef').value = ''; rotear(); });
+$('#dataRef').addEventListener('change', (e) => { estado.dataRef = e.target.value; $('#hoje').hidden = !estado.dataRef; rotear(); });
+$('#hoje').addEventListener('click', () => { estado.dataRef = ''; $('#dataRef').value = ''; $('#hoje').hidden = true; rotear(); });
 
 // atualização discreta do dashboard a cada 30 s, sem mexer enquanto a pessoa preenche algo.
 setInterval(() => { if ((location.hash === '' || location.hash === '#/') && !$('#camada').innerHTML && document.visibilityState === 'visible') rotear(); }, 30000);
