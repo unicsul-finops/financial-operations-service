@@ -166,6 +166,12 @@ type PedidoMovimentacao struct {
 
 const EventoAmortizacao = "AMORTIZACAO_ANTECIPADA"
 
+// quais parcelas a amortização quita (RN-17): as últimas, reduzindo o prazo (o padrão), ou as próximas a vencer.
+const (
+	ModoUltimas  = "ULTIMAS"
+	ModoProximas = "PROXIMAS"
+)
+
 // uma parcela antecipada. valorPresente = amortizacao + juros e desconto = valorParcela − valorPresente (RN-16 e RN-17).
 type ParcelaAmortizada struct {
 	Numero        int             `json:"numero"`
@@ -202,6 +208,7 @@ type ParcelaRecalculada struct {
 // resultado da simulação e, gravado no evento, da amortização. a simulação e o registro usam a mesma conta.
 type SimulacaoAmortizacao struct {
 	NumeroOperacao              string
+	Modo                        string
 	DataReferencia              string
 	QuantidadeParcelas          int
 	Parcelas                    []ParcelaAmortizada
@@ -216,6 +223,7 @@ type SimulacaoAmortizacao struct {
 type Amortizacao struct {
 	ID                          int64               `json:"-"`
 	NumeroOperacao              string              `json:"numeroOperacao"`
+	Modo                        string              `json:"modo"`
 	IdentificadorPagamento      string              `json:"identificadorPagamento,omitempty"`
 	DataPagamento               string              `json:"dataPagamento"`
 	QuantidadeParcelas          int                 `json:"quantidadeParcelas"`
@@ -231,6 +239,7 @@ type Amortizacao struct {
 // corpo do POST de amortização. ponteiro e NullDecimal separam o campo ausente do campo vazio.
 type PedidoAmortizacao struct {
 	QuantidadeParcelas     decimal.NullDecimal
+	Modo                   *string
 	DataPagamento          *string
 	IdentificadorPagamento *string
 }

@@ -779,32 +779,42 @@ telas.amortizar = async (meu) => {
   const lista = await opcoesDeOperacao();
   if (meu !== ciclo) return;
   montar(paginaForm({
-    icone: 'amortizar', olho: 'Amortização', titulo: 'Antecipe as últimas parcelas.',
+    icone: 'amortizar', olho: 'Amortização', titulo: 'Antecipe parcelas da operação.',
     sub: 'Quitação pelo valor presente, com desconto dos juros que ainda não correram. Só vale sem parcela vencida.',
-    passos: [['Simule', 'Veja o valor presente e o desconto de cada parcela'], ['Confirme', 'O pagamento é gravado numa transação só'], ['Recalculamos', 'As parcelas que sobram refazem juros e amortização'], ['Saldo devedor', 'Cai só pela parte de principal']],
+    passos: [['Escolha as parcelas', 'Últimas (mais desconto) ou próximas a vencer (menos desconto)'], ['Simule', 'Veja o valor presente e o desconto de cada parcela'], ['Confirme', 'O pagamento é gravado numa transação só'], ['Recalculamos', 'As parcelas que sobram refazem juros e amortização']],
     formulario: `<form id="f" autocomplete="off"><div class="campos">
       ${campoOp(p.get('op') || '')}
+      <div class="campo s2"><span class="rot">${ic('desconto')} Quais parcelas</span>${htmlCombo('modo', { placeholder: 'Escolha o modo' })}<small id="dicaModo"></small></div>
       <label class="campo"><span class="rot">${ic('parcelas')} Quantas parcelas</span><input id="qtd" type="number" min="1" step="1" value="2" required></label>
       ${campoData('data', 'Data', 'Vale para a simulação e para o pagamento')}
       </div><div id="aviso"></div>
       <div class="acoes form-acoes"><button class="btn primario" type="submit">${ic('amortizar')} Simular</button></div></form>`,
   }), (app) => {
     ligarCombo(app, 'op', { digitavel: true }).definir(lista);
+    const MODOS = { ULTIMAS: 'Últimas parcelas: reduz o prazo e dá mais desconto', PROXIMAS: 'Próximas a vencer: menos desconto, melhor para o negócio' };
+    ligarCombo(app, 'modo', { placeholder: 'Escolha o modo' }).definir([
+      { valor: 'ULTIMAS', rotulo: 'Últimas parcelas', sub: 'mais desconto' },
+      { valor: 'PROXIMAS', rotulo: 'Próximas a vencer', sub: 'menos desconto' },
+    ], 'ULTIMAS');
+    const dicaModo = () => { $('#dicaModo', app).textContent = MODOS[$('#modo', app).value] || ''; };
+    $('#modo', app).addEventListener('change', dicaModo);
+    dicaModo();
     $('#f', app).onsubmit = async (e) => {
       e.preventDefault();
-      const op = $('#op', app).value.trim(), qtd = Number($('#qtd', app).value), data = $('#data', app).value;
+      const op = $('#op', app).value.trim(), qtd = Number($('#qtd', app).value), data = $('#data', app).value, modo = $('#modo', app).value || 'ULTIMAS';
+      const rotuloModo = modo === 'PROXIMAS' ? 'próximas a vencer' : 'últimas';
       try {
-        const s = await ler(`/operacoes/${idOp(op)}/amortizacoes/simulacao?quantidadeParcelas=${qtd}&dataReferencia=${data}`);
+        const s = await ler(`/operacoes/${idOp(op)}/amortizacoes/simulacao?quantidadeParcelas=${qtd}&modo=${modo}&dataReferencia=${data}`);
         $('#aviso', app).innerHTML = '';
-        mostrarSaida(linha(celula(`<div class="corpo reveal"><div class="eyebrow">${ic('amortizar')} Simulação</div><h2>${s.parcelas.length} parcela(s) antecipada(s)</h2>
+        mostrarSaida(linha(celula(`<div class="corpo reveal"><div class="eyebrow">${ic('amortizar')} Simulação</div><h2>${s.parcelas.length} parcela(s) antecipada(s) · ${rotuloModo}</h2>
           <div class="tabela-wrap"><table><thead><tr><th>#</th><th>Vencimento</th><th class="dir">Valor da parcela</th><th class="dir">Valor presente</th><th class="dir">Desconto</th><th class="dir">Amortização</th><th class="dir">Juros</th></tr></thead><tbody>
           ${s.parcelas.map((x) => `<tr><td><strong>${x.numero}</strong></td><td>${dataBR(x.vencimento)}</td><td class="dir num">${R$(x.valorParcela)}</td><td class="dir num">${R$(x.valorPresente)}</td><td class="dir num">${R$(x.desconto)}</td><td class="dir num">${R$(x.amortizacao)}</td><td class="dir num">${R$(x.juros)}</td></tr>`).join('')}</tbody></table></div>
           <dl class="kv"><dt>Total a pagar</dt><dd class="num">${R$(s.totais.valorAPagar)}</dd><dt>Desconto total</dt><dd class="num">${R$(s.totais.desconto)}</dd><dt>Saldo devedor</dt><dd class="num">${R$(s.saldoDevedorAntes)} → ${R$(s.saldoDevedorApos)}</dd><dt>Parcelas que continuam</dt><dd>${s.quantidadeParcelasRestantes}</dd></dl>
           <div class="acoes" style="margin-top:26px"><button class="btn primario" type="button" id="confirmar">${ic('liquidar')} Confirmar amortização</button></div></div>`)) + faixa());
         $('#confirmar', app).onclick = async () => {
-          if (!(await confirmar({ titulo: 'Registrar amortização?', texto: 'As parcelas ficam quitadas e a tabela das que sobram é recalculada.', linhas: [['Operação', op], ['Parcelas', String(qtd)], ['Total a pagar', R$(s.totais.valorAPagar)], ['Data', dataBR(data)]], ok: 'Registrar' }))) return;
+          if (!(await confirmar({ titulo: 'Registrar amortização?', texto: 'As parcelas ficam quitadas e a tabela das que sobram é recalculada.', linhas: [['Operação', op], ['Parcelas', `${qtd} (${rotuloModo})`], ['Total a pagar', R$(s.totais.valorAPagar)], ['Data', dataBR(data)]], ok: 'Registrar' }))) return;
           try {
-            const { corpo: r } = await api(`/operacoes/${idOp(op)}/amortizacoes`, { method: 'POST', body: { quantidadeParcelas: qtd, dataPagamento: data, identificadorPagamento: tokenUnico('web') } });
+            const { corpo: r } = await api(`/operacoes/${idOp(op)}/amortizacoes`, { method: 'POST', body: { quantidadeParcelas: qtd, modo, dataPagamento: data, identificadorPagamento: tokenUnico('web') } });
             $('#aviso', app).innerHTML = aviso('ok', 'Amortização registrada.');
             mostrarSaida(resultado('Amortização registrada', [['Parcelas quitadas', r.lancamentos.map((x) => x.numero).join(', ')], ['Total pago', R$(r.totais.valorAPagar)], ['Desconto', R$(r.totais.desconto)], ['Saldo devedor', R$(r.saldoDevedorAntes) + ' → ' + R$(r.saldoDevedorApos)]],
               `<a class="btn escuro" href="#/operacoes/${esc(r.numeroOperacao)}">${ic('contrato')} Ver operação</a>`));

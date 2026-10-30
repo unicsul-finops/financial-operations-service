@@ -139,3 +139,64 @@ func TestAmortizacaoIntegracao(t *testing.T) {
 	// depois da antecipação a liquidação fecha só o que sobrou.
 	esperar(chamar("GET", base+"/liquidacao?dataReferencia=2026-01-15", ""), 200, `"saldoDevedor":6907.89`)
 }
+
+// modo PROXIMAS: quita as primeiras em aberto e deixa o calendário que sobra fechando em zero.
+func TestAmortizacaoProximasIntegracao(t *testing.T) {
+	db := bancoDeIntegracao(t)
+	chamar, esperar := chamadasDeTeste(t, db)
+	esperar(chamar("POST", "/operacoes", string(operacaoUmAnoAntes(t, "OP-2025-0014"))), 201)
+	base := "/operacoes/OP-2025-0014"
+	esperar(chamar("POST", base+"/parcelas/1/pagamentos", `{"valor": 936.91, "dataPagamento": "2025-11-30"}`), 201)
+	esperar(chamar("POST", base+"/parcelas/2/pagamentos", `{"valor": 936.91, "dataPagamento": "2025-12-30"}`), 201)
+
+	// sem modo vale ULTIMAS; com modo, a resposta diz qual foi usado.
+	esperar(chamar("GET", base+"/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2025-12-30", ""), 200, `"modo":"ULTIMAS"`, `"valorAPagar":1574.37`)
+	esperar(chamar("GET", base+"/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2025-12-30&modo=proximas", ""), 200,
+		`"modo":"PROXIMAS"`, `"numero":3`, `"numero":4`, `"valorPresente":919.89`, `"valorPresente":903.18`,
+		`"totais":{"valorParcelas":1873.82,"desconto":50.75,"valorPresente":1823.07,"amortizacao":1823.07,"juros":0,"valorAPagar":1823.07}`,
+		`"saldoDevedorAntes":8482.27,"saldoDevedorApos":6659.2,"quantidadeParcelasRestantes":8`)
+	esperar(chamar("GET", base+"/amortizacoes/simulacao?quantidadeParcelas=2&dataReferencia=2025-12-30&modo=TODAS", ""), 400, "modo deve ser ULTIMAS ou PROXIMAS")
+	esperar(chamar("POST", base+"/amortizacoes", `{"quantidadeParcelas": 2, "modo": "TODAS"}`), 400, "modo deve ser ULTIMAS ou PROXIMAS")
+
+	pedido := `{"quantidadeParcelas": 2, "modo": "PROXIMAS", "dataPagamento": "2025-12-30", "identificadorPagamento": "PAG-P1"}`
+	w := chamar("POST", base+"/amortizacoes", pedido)
+	esperar(w, 201, `"modo":"PROXIMAS"`, `"saldoDevedorApos":6659.2`, `"numero":3`)
+	reenvio := chamar("POST", base+"/amortizacoes", pedido)
+	esperar(reenvio, 200, `"modo":"PROXIMAS"`)
+	if reenvio.Body.String() != w.Body.String() {
+		t.Fatalf("reenvio diferente do gravado: %s / %s", reenvio.Body, w.Body)
+	}
+
+	// parcelas 3 e 4 pagas, 5 a 12 em aberto com o saldo fechando em zero na última.
+	w = chamar("GET", base+"/parcelas?dataReferencia=2025-12-30", "")
+	var parcelas []struct {
+		Numero              int
+		Status              string
+		Juros, SaldoDevedor decimal.Decimal
+		Amortizacao         decimal.Decimal
+		ValorParcela        decimal.Decimal
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &parcelas); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range parcelas[2:4] {
+		if p.Status != "PAGA" {
+			t.Fatalf("parcela %d: %s", p.Numero, p.Status)
+		}
+	}
+	for _, p := range parcelas[4:] {
+		if p.Status != "PENDENTE" || !p.Juros.Add(p.Amortizacao).Equal(p.ValorParcela) {
+			t.Fatalf("parcela %d: %+v", p.Numero, p)
+		}
+	}
+	if !parcelas[11].SaldoDevedor.IsZero() || !parcelas[4].Juros.Equal(decimal.RequireFromString("376.47")) {
+		t.Fatalf("repartição: parcela 5 %+v, parcela 12 %+v", parcelas[4], parcelas[11])
+	}
+
+	var saldo, modo string
+	db.QueryRow(`SELECT o.saldo_devedor::text FROM operacao o WHERE o.numero_operacao = 'OP-2025-0014'`).Scan(&saldo)
+	db.QueryRow(`SELECT e.detalhe->>'modo' FROM evento e JOIN operacao o ON o.id = e.operacao_id WHERE o.numero_operacao = 'OP-2025-0014' AND e.tipo = 'AMORTIZACAO_ANTECIPADA'`).Scan(&modo)
+	if saldo != "6659.20" || modo != "PROXIMAS" {
+		t.Fatalf("gravou saldo %s e modo %s", saldo, modo)
+	}
+}

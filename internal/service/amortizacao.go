@@ -28,12 +28,30 @@ func interpretarQuantidade(valor *string) (int, error) {
 	return n, nil
 }
 
-func (s *OperacaoService) SimularAmortizacao(identificador string, quantidade, referencia *string) (domain.SimulacaoAmortizacao, error) {
+var errModoInvalido = errors.New("modo deve ser ULTIMAS ou PROXIMAS")
+
+// sem o campo vale ULTIMAS, o comportamento de antes do modo existir.
+func interpretarModo(valor *string) (string, error) {
+	if valor == nil || strings.TrimSpace(*valor) == "" {
+		return domain.ModoUltimas, nil
+	}
+	modo := strings.ToUpper(strings.TrimSpace(*valor))
+	if modo != domain.ModoUltimas && modo != domain.ModoProximas {
+		return "", errModoInvalido
+	}
+	return modo, nil
+}
+
+func (s *OperacaoService) SimularAmortizacao(identificador string, quantidade, modo, referencia *string) (domain.SimulacaoAmortizacao, error) {
 	id, numero, err := identificarOperacao(identificador)
 	if err != nil {
 		return domain.SimulacaoAmortizacao{}, err
 	}
 	n, err := interpretarQuantidade(quantidade)
+	if err != nil {
+		return domain.SimulacaoAmortizacao{}, err
+	}
+	m, err := interpretarModo(modo)
 	if err != nil {
 		return domain.SimulacaoAmortizacao{}, err
 	}
@@ -48,11 +66,12 @@ func (s *OperacaoService) SimularAmortizacao(identificador string, quantidade, r
 	if c.UltimaMovimentacao != "" && data.Format(time.DateOnly) < c.UltimaMovimentacao {
 		return domain.SimulacaoAmortizacao{}, fmt.Errorf("dataReferencia não pode ser anterior à data do último pagamento (%s)", c.UltimaMovimentacao)
 	}
-	return calcularAmortizacao(c, n, data)
+	return calcularAmortizacao(c, n, m, data)
 }
 
 // RN-17: sem parcela vencida em aberto nem paga em parte, e nunca todas as parcelas (isso é liquidação).
-func calcularAmortizacao(c domain.Carteira, quantidade int, data time.Time) (domain.SimulacaoAmortizacao, error) {
+// ULTIMAS quita o fim do calendário e reduz o prazo. PROXIMAS quita as primeiras em aberto, que têm menos desconto.
+func calcularAmortizacao(c domain.Carteira, quantidade int, modo string, data time.Time) (domain.SimulacaoAmortizacao, error) {
 	op := c.Operacao
 	if op.Status == domain.StatusOperacaoLiquidada {
 		return domain.SimulacaoAmortizacao{}, errors.New("a operação já está liquidada, não há parcelas para antecipar")
@@ -97,14 +116,21 @@ func calcularAmortizacao(c domain.Carteira, quantidade int, data time.Time) (dom
 	restantes := len(emAberto) - quantidade
 	r := domain.SimulacaoAmortizacao{
 		NumeroOperacao:              op.NumeroOperacao,
+		Modo:                        modo,
 		DataReferencia:              dia,
 		QuantidadeParcelas:          quantidade,
 		Parcelas:                    []domain.ParcelaAmortizada{},
 		SaldoDevedorAntes:           op.SaldoDevedor,
 		QuantidadeParcelasRestantes: restantes,
 	}
+	// quais parcelas saem e quais continuam em aberto.
+	quitadas, quitadasEmAberto, continuam := presentes[restantes:], emAberto[restantes:], emAberto[:restantes]
+	if modo == domain.ModoProximas {
+		quitadas, quitadasEmAberto, continuam = presentes[:quantidade], emAberto[:quantidade], emAberto[quantidade:]
+	}
+
 	// a parte de principal do valor presente é VP ÷ (1 + i)^f. o resto são os juros do período em curso.
-	for _, p := range presentes[restantes:] {
+	for _, p := range quitadas {
 		amortizacao := p.ValorPresente.Div(fator).Round(2)
 		juros := p.ValorPresente.Sub(amortizacao)
 		r.Parcelas = append(r.Parcelas, domain.ParcelaAmortizada{
@@ -119,17 +145,40 @@ func calcularAmortizacao(c domain.Carteira, quantidade int, data time.Time) (dom
 	}
 	r.Totais.ValorAPagar = r.Totais.ValorPresente
 	r.SaldoDevedorApos = op.SaldoDevedor.Sub(r.Totais.Amortizacao)
-	r.Recalculadas = recalcularRestantes(emAberto[:restantes], op.TaxaJuros, r.SaldoDevedorApos)
+
+	// a primeira parcela que continua só vence depois dos períodos das que foram quitadas, e o juros deles corre sobre o saldo.
+	periodos := 1
+	for _, p := range quitadasEmAberto {
+		if p.Vencimento > dia {
+			periodos++
+		}
+	}
+	if modo == domain.ModoUltimas {
+		periodos = 1
+	}
+	r.Recalculadas, err = recalcularRestantes(continuam, op.TaxaJuros, r.SaldoDevedorApos, periodos)
+	if err != nil {
+		return domain.SimulacaoAmortizacao{}, err
+	}
 	return r, nil
 }
 
 // RN-17: valor e vencimento ficam; a divisão entre juros e amortização é refeita pelo saldo menor (juros = saldo × i).
+// a primeira parcela pode estar vários períodos à frente, quando as próximas é que foram quitadas: nesse caso o juros dela
+// é o de todos os períodos, saldo × ((1 + i)^períodos − 1).
 // a última parcela absorve os centavos: amortiza o que sobrou do saldo e o juros fecha o valor da parcela.
-func recalcularRestantes(parcelas []domain.Parcela, taxa, saldo decimal.Decimal) []domain.ParcelaRecalculada {
+func recalcularRestantes(parcelas []domain.Parcela, taxa, saldo decimal.Decimal, periodos int) ([]domain.ParcelaRecalculada, error) {
 	recalculadas := make([]domain.ParcelaRecalculada, 0, len(parcelas))
 	for i, p := range parcelas {
 		valor := p.Juros.Add(p.Amortizacao)
 		juros := saldo.Mul(taxa).Round(2)
+		if i == 0 && periodos > 1 {
+			fator, err := potenciaDaTaxa(taxa, decimal.NewFromInt(int64(periodos)))
+			if err != nil {
+				return nil, err
+			}
+			juros = saldo.Mul(fator.Sub(decimal.NewFromInt(1))).Round(2)
+		}
 		amortizacao := valor.Sub(juros)
 		if i == len(parcelas)-1 {
 			amortizacao = saldo
@@ -142,7 +191,7 @@ func recalcularRestantes(parcelas []domain.Parcela, taxa, saldo decimal.Decimal)
 			Depois: domain.ReparticaoParcela{Juros: juros, Amortizacao: amortizacao, SaldoDevedor: saldo},
 		})
 	}
-	return recalculadas
+	return recalculadas, nil
 }
 
 func (s *OperacaoService) RegistrarAmortizacao(identificador string, pedido domain.PedidoAmortizacao) (domain.Amortizacao, bool, error) {
@@ -157,6 +206,10 @@ func (s *OperacaoService) RegistrarAmortizacao(identificador string, pedido doma
 	if !quantidade.IsInteger() || !quantidade.IsPositive() || quantidade.GreaterThan(decimal.NewFromInt(1_000_000)) {
 		return domain.Amortizacao{}, false, errQuantidadeInvalida
 	}
+	modo, err := interpretarModo(pedido.Modo)
+	if err != nil {
+		return domain.Amortizacao{}, false, err
+	}
 	m, err := s.validarPedidoSemValor(pedido.DataPagamento, pedido.IdentificadorPagamento)
 	if err != nil {
 		return domain.Amortizacao{}, false, err
@@ -165,7 +218,7 @@ func (s *OperacaoService) RegistrarAmortizacao(identificador string, pedido doma
 	var amortizacao domain.Amortizacao
 	gravado, novo, err := s.movimentacoes.Movimentar(id, numeroOperacao, m.identificador, func(c domain.Carteira) (domain.NovoEvento, error) {
 		var evento domain.NovoEvento
-		amortizacao, evento, err = decidirAmortizacao(c, int(quantidade.IntPart()), m)
+		amortizacao, evento, err = decidirAmortizacao(c, int(quantidade.IntPart()), modo, m)
 		return evento, err
 	})
 	if err != nil {
@@ -178,26 +231,31 @@ func (s *OperacaoService) RegistrarAmortizacao(identificador string, pedido doma
 		if err := json.Unmarshal(gravado.Detalhe, &amortizacao); err != nil {
 			return domain.Amortizacao{}, false, err
 		}
+		// eventos gravados antes do modo existir eram sempre das últimas parcelas.
+		if amortizacao.Modo == "" {
+			amortizacao.Modo = domain.ModoUltimas
+		}
 	}
 	amortizacao.ID = gravado.ID
 	amortizacao.ParcelasRecalculadas = nil
 	return amortizacao, novo, nil
 }
 
-func decidirAmortizacao(c domain.Carteira, quantidade int, m movimento) (domain.Amortizacao, domain.NovoEvento, error) {
+func decidirAmortizacao(c domain.Carteira, quantidade int, modo string, m movimento) (domain.Amortizacao, domain.NovoEvento, error) {
 	if m.dia() < c.Operacao.DataLiberacao {
 		return domain.Amortizacao{}, domain.NovoEvento{}, fmt.Errorf("dataPagamento não pode ser anterior à dataLiberacao (%s)", c.Operacao.DataLiberacao)
 	}
 	if c.UltimaMovimentacao != "" && m.dia() < c.UltimaMovimentacao {
 		return domain.Amortizacao{}, domain.NovoEvento{}, fmt.Errorf("dataPagamento não pode ser anterior à data do último pagamento (%s)", c.UltimaMovimentacao)
 	}
-	r, err := calcularAmortizacao(c, quantidade, m.data)
+	r, err := calcularAmortizacao(c, quantidade, modo, m.data)
 	if err != nil {
 		return domain.Amortizacao{}, domain.NovoEvento{}, err
 	}
 
 	amortizacao := domain.Amortizacao{
 		NumeroOperacao:              r.NumeroOperacao,
+		Modo:                        r.Modo,
 		IdentificadorPagamento:      m.identificador,
 		DataPagamento:               m.dia(),
 		QuantidadeParcelas:          quantidade,
