@@ -2371,6 +2371,208 @@
           }
         }
       ]
+    },
+    {
+      "name": "Contrato #12 — resumo financeiro",
+      "description": "Cenários da RN-20 para a implementação depois da aprovação do contrato; falham no código atual.\n\nUsa a operação OP-2025-0012, com o calendário PRICE um ano antes. Rode a pasta inteira, na ordem, com a OP-2025-0012 ainda sem pagamentos (banco limpo).",
+      "item": [
+        {
+          "name": "Criar operação de teste OP-2025-0012",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201 ou 200\", function () { pm.expect([201, 200]).to.include(pm.response.code); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.numeroOperacao).to.equal(\"OP-2025-0012\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacao\": {\n    \"id\": 1,\n    \"identificador\": \"OP-2025-0012\",\n    \"estado\": \"DEFINIDA\",\n    \"criadoEm\": \"2026-10-08 14:03:22\",\n    \"definidoEm\": \"2026-10-08 15:12:40\"\n  },\n  \"cliente\": {\n    \"tipoPessoa\": \"PF\",\n    \"documento\": \"52998224725\"\n  },\n  \"produto\": {\n    \"codigo\": \"CONSIGNADO_INSS\",\n    \"nome\": \"Crédito pessoal consignado INSS\",\n    \"modalidadeBcb\": \"Crédito pessoal consignado INSS - Prefixado\"\n  },\n  \"condicoes\": {\n    \"valor\": 10000,\n    \"prazoMeses\": 12,\n    \"dataLiberacao\": \"2025-10-30\",\n    \"primeiroRelacionamento\": true\n  },\n  \"taxa\": {\n    \"faixaRisco\": \"B\",\n    \"taxaFinalMes\": 1.85,\n    \"taxaFinalAno\": 24.6,\n    \"tetoAplicado\": true\n  },\n  \"sistema\": \"PRICE\",\n  \"resumo\": {\n    \"parcelaFixa\": 936.91,\n    \"totalJuros\": 1242.88,\n    \"totalPago\": 11242.88\n  },\n  \"encargos\": {\n    \"iof\": {\n      \"diario\": 167.65,\n      \"adicional\": 38,\n      \"total\": 205.65\n    },\n    \"tarifaCadastro\": 50,\n    \"total\": 255.65\n  },\n  \"valorLiberado\": 9744.35,\n  \"cet\": {\n    \"anualPercentual\": 30.89,\n    \"mensalPercentual\": 2.27\n  },\n  \"calendario\": [\n    {\n      \"numero\": 1,\n      \"amortizacao\": 751.91,\n      \"juros\": 185,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 9248.09,\n      \"vencimento\": \"2025-11-30\",\n      \"diasCorridos\": 31\n    },\n    {\n      \"numero\": 2,\n      \"amortizacao\": 765.82,\n      \"juros\": 171.09,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 8482.27,\n      \"vencimento\": \"2025-12-30\",\n      \"diasCorridos\": 61\n    },\n    {\n      \"numero\": 3,\n      \"amortizacao\": 779.99,\n      \"juros\": 156.92,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 7702.28,\n      \"vencimento\": \"2026-02-01\",\n      \"diasCorridos\": 94\n    },\n    {\n      \"numero\": 4,\n      \"amortizacao\": 794.42,\n      \"juros\": 142.49,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 6907.86,\n      \"vencimento\": \"2026-03-01\",\n      \"diasCorridos\": 122\n    },\n    {\n      \"numero\": 5,\n      \"amortizacao\": 809.11,\n      \"juros\": 127.8,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 6098.75,\n      \"vencimento\": \"2026-03-30\",\n      \"diasCorridos\": 151\n    },\n    {\n      \"numero\": 6,\n      \"amortizacao\": 824.08,\n      \"juros\": 112.83,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 5274.67,\n      \"vencimento\": \"2026-04-30\",\n      \"diasCorridos\": 182\n    },\n    {\n      \"numero\": 7,\n      \"amortizacao\": 839.33,\n      \"juros\": 97.58,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 4435.34,\n      \"vencimento\": \"2026-05-31\",\n      \"diasCorridos\": 213\n    },\n    {\n      \"numero\": 8,\n      \"amortizacao\": 854.86,\n      \"juros\": 82.05,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 3580.48,\n      \"vencimento\": \"2026-06-30\",\n      \"diasCorridos\": 243\n    },\n    {\n      \"numero\": 9,\n      \"amortizacao\": 870.67,\n      \"juros\": 66.24,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 2709.81,\n      \"vencimento\": \"2026-07-30\",\n      \"diasCorridos\": 273\n    },\n    {\n      \"numero\": 10,\n      \"amortizacao\": 886.78,\n      \"juros\": 50.13,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 1823.03,\n      \"vencimento\": \"2026-08-30\",\n      \"diasCorridos\": 304\n    },\n    {\n      \"numero\": 11,\n      \"amortizacao\": 903.18,\n      \"juros\": 33.73,\n      \"valor\": 936.91,\n      \"saldoDevedor\": 919.85,\n      \"vencimento\": \"2026-09-30\",\n      \"diasCorridos\": 335\n    },\n    {\n      \"numero\": 12,\n      \"amortizacao\": 919.85,\n      \"juros\": 17.02,\n      \"valor\": 936.87,\n      \"saldoDevedor\": 0,\n      \"vencimento\": \"2026-11-01\",\n      \"diasCorridos\": 367\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Resumo sem pagamentos (RN-20)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.equal(\"ATIVA\");",
+                  "  pm.expect(body.totalPago).to.equal(0);",
+                  "  pm.expect(body.totalPrevisto).to.equal(11242.88);",
+                  "  pm.expect(body.saldoDevedor).to.equal(10000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0012/resumo?dataReferencia=2025-11-30",
+            "description": ""
+          }
+        },
+        {
+          "name": "Paga 500,00 da parcela 1 em 10/12 (RN-14)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", function () { pm.expect(pm.response.code).to.equal(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0012/parcelas/1/pagamentos",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 500,\n  \"dataPagamento\": \"2025-12-10\",\n  \"identificadorPagamento\": \"col-12-p1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resumo depois do pagamento parcial (RN-20)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test(\"valores da resposta\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.equal(\"EM_ATRASO\");",
+                  "  pm.expect(body.diasEmAtraso).to.equal(10);",
+                  "  pm.expect(body.totalPago).to.equal(500);",
+                  "  pm.expect(body.encargosPagos).to.equal(21.86);",
+                  "  pm.expect(body.jurosPagos).to.equal(185);",
+                  "  pm.expect(body.valorAmortizado).to.equal(293.14);",
+                  "  pm.expect(body.saldoDevedor).to.equal(9706.86);",
+                  "  pm.expect(body.valorVencido).to.equal(458.77);",
+                  "  pm.expect(+(body.valorAmortizado + body.jurosPagos + body.encargosPagos).toFixed(2)).to.equal(body.totalPago);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0012/resumo?dataReferencia=2025-12-10",
+            "description": ""
+          }
+        },
+        {
+          "name": "dataReferencia anterior à última movimentação (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"mensagem de erro\", function () { pm.expect(pm.response.json().erro).to.equal(\"dataReferencia não pode ser anterior à data da última movimentação financeira da operação\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0012/resumo?dataReferencia=2025-12-09",
+            "description": ""
+          }
+        },
+        {
+          "name": "dataReferencia inválida (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 400\", function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test(\"mensagem de erro\", function () { pm.expect(pm.response.json().erro).to.equal(\"dataReferencia deve estar no formato YYYY-MM-DD\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2025-0012/resumo?dataReferencia=2025-02-30",
+            "description": ""
+          }
+        },
+        {
+          "name": "Operação inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", function () { pm.expect(pm.response.code).to.equal(404); });",
+                  "pm.test(\"mensagem de erro\", function () { pm.expect(pm.response.json().erro).to.equal(\"operação não encontrada\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/operacoes/OP-2099-9999/resumo",
+            "description": ""
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8083",
+      "type": "string"
+    },
+    {
+      "key": "operacaoId",
+      "value": "",
+      "type": "string"
     }
   ],
   "variable": [
