@@ -136,6 +136,15 @@ func carregarCarteira(tx *sql.Tx, id int64, numero string, travar bool) (domain.
 		return domain.Carteira{}, err
 	}
 
+	err = tx.QueryRow(`SELECT COALESCE(SUM(multa), 0), COALESCE(SUM(juros_mora), 0), COALESCE(SUM(juros), 0),
+  COALESCE(SUM(amortizacao), 0), COALESCE(SUM(desconto), 0)
+  FROM lancamento WHERE operacao_id = $1 AND numero_parcela IS NULL`, operacao.ID).
+		Scan(&carteira.LancamentoOperacao.Multa, &carteira.LancamentoOperacao.JurosMora, &carteira.LancamentoOperacao.Juros,
+			&carteira.LancamentoOperacao.Amortizacao, &carteira.LancamentoOperacao.Desconto)
+	if err != nil {
+		return domain.Carteira{}, err
+	}
+
 	rows, err := tx.Query(`SELECT `+colunasParcela+` FROM parcela WHERE operacao_id = $1 ORDER BY numero`, operacao.ID)
 	if err != nil {
 		return domain.Carteira{}, err

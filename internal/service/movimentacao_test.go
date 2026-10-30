@@ -35,7 +35,11 @@ func gravar(c *domain.Carteira, e domain.NovoEvento) {
 	for _, l := range e.Lancamentos {
 		if l.NumeroParcela > 0 {
 			c.Lancamentos = append(c.Lancamentos, domain.LancamentoParcela{NumeroParcela: l.NumeroParcela, Data: e.Data, Distribuicao: l.Distribuicao, Desconto: l.Desconto})
+			continue
 		}
+		o := &c.LancamentoOperacao
+		o.Multa, o.JurosMora, o.Juros, o.Amortizacao = o.Multa.Add(l.Multa), o.JurosMora.Add(l.JurosMora), o.Juros.Add(l.Juros), o.Amortizacao.Add(l.Amortizacao)
+		o.Desconto = o.Desconto.Add(l.Desconto)
 	}
 	for i := range c.Parcelas {
 		if status, ok := e.StatusParcelas[c.Parcelas[i].Numero]; ok {
