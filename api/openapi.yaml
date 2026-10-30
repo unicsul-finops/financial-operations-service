@@ -941,6 +941,51 @@ paths:
         "404":
           $ref: "#/components/responses/NaoEncontrada"
 
+  /operacoes/{identificador}/resumo:
+    get:
+      tags: [Operações]
+      summary: Consulta o resumo financeiro da operação
+      description: |
+        RN-20. Totais da operação na data de referência, somados a partir dos lançamentos e das parcelas. Nada é gravado.
+
+        Conferência que vale sempre: `totalPago = valorAmortizado + jurosPagos + encargosPagos`. O `descontoAntecipacao` não entra no `totalPago`, porque não é dinheiro recebido.
+
+        `valorParaQuitar` é o mesmo valor do `GET /operacoes/{identificador}/liquidacao` na mesma data, e é `0` em operação `LIQUIDADA`.
+
+        `status` e `diasEmAtraso` seguem as regras da consulta da operação (RN-11 e RN-12).
+      operationId: consultarResumo
+      parameters:
+        - $ref: "#/components/parameters/IdentificadorOperacao"
+        - $ref: "#/components/parameters/DataReferencia"
+      responses:
+        "200":
+          description: Resumo financeiro na data de referência.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumoFinanceiro"
+              examples:
+                aposPagamentoParcial:
+                  $ref: "#/components/examples/ResumoAposPagamentoParcial"
+        "400":
+          description: Identificador ou data inválidos (RN-09).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Erro"
+              examples:
+                identificadorInvalido:
+                  value:
+                    erro: "identificador da operação inválido, use o id ou o numeroOperacao (ex.: 1 ou OP-2026-0001)"
+                dataReferenciaInvalida:
+                  value:
+                    erro: dataReferencia deve estar no formato YYYY-MM-DD
+                dataReferenciaAnterior:
+                  value:
+                    erro: dataReferencia não pode ser anterior à data da última movimentação financeira da operação
+        "404":
+          $ref: "#/components/responses/NaoEncontrada"
+
 components:
   parameters:
     IdentificadorOperacao:
@@ -1389,6 +1434,25 @@ components:
         saldoDevedorAntes: 8482.27
         saldoDevedorApos: 6907.89
         quantidadeParcelasRestantes: 8
+
+    ResumoAposPagamentoParcial:
+      summary: Depois do pagamento parcial de 500,00 em 10/12/2026 (RN-14), consultado no mesmo dia
+      value:
+        numeroOperacao: OP-2026-0001
+        dataReferencia: "2026-12-10"
+        status: EM_ATRASO
+        diasEmAtraso: 10
+        totalContratado: 10000
+        totalPrevisto: 11242.88
+        totalPago: 500
+        valorAmortizado: 293.14
+        jurosPagos: 185
+        encargosPagos: 21.86
+        descontoAntecipacao: 0
+        valorVencido: 458.77
+        encargosEmAberto: 0
+        saldoDevedor: 9706.86
+        valorParaQuitar: 9763.54
 
   responses:
     IdentificadorInvalido:
@@ -2344,3 +2408,78 @@ components:
           type: string
           format: date-time
           example: "2027-01-15T12:45:30Z"
+
+    ResumoFinanceiro:
+      type: object
+      description: Totais da operação na data de referência (RN-20). Todos os campos sempre presentes, inclusive zerados.
+      required: [numeroOperacao, dataReferencia, status, diasEmAtraso, totalContratado, totalPrevisto, totalPago, valorAmortizado, jurosPagos, encargosPagos, descontoAntecipacao, valorVencido, encargosEmAberto, saldoDevedor, valorParaQuitar]
+      properties:
+        numeroOperacao:
+          type: string
+          example: OP-2026-0001
+        dataReferencia:
+          type: string
+          format: date
+          example: "2026-12-10"
+        status:
+          $ref: "#/components/schemas/StatusOperacao"
+        diasEmAtraso:
+          type: integer
+          minimum: 0
+          description: Maior atraso, em dias corridos, entre as parcelas em aberto na data (RN-10). `0` sem atraso e em operação `LIQUIDADA`.
+          example: 10
+        totalContratado:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Valor da operação (`valorAprovado`)."
+          example: 10000
+        totalPrevisto:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Soma das parcelas do calendário original. A amortização antecipada não muda esse total."
+          example: 11242.88
+        totalPago:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Tudo o que o cliente pagou (parcelas, encargos, amortizações e liquidação), sem o desconto."
+          example: 500
+        valorAmortizado:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Parte do `totalPago` que abateu principal."
+          example: 293.14
+        jurosPagos:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Parte do `totalPago` que foi para juros remuneratórios."
+          example: 185
+        encargosPagos:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Multa e juros de mora pagos."
+          example: 21.86
+        descontoAntecipacao:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Desconto concedido em amortizações e na liquidação (soma nominal − valor presente)."
+          example: 0
+        valorVencido:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Valor em aberto das parcelas vencidas, sem encargos."
+          example: 458.77
+        encargosEmAberto:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Multa e mora das parcelas vencidas, na data de referência."
+          example: 0
+        saldoDevedor:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Principal em aberto (RN-15)."
+          example: 9706.86
+        valorParaQuitar:
+          allOf:
+            - $ref: "#/components/schemas/Dinheiro"
+          description: "Valor da liquidação na data de referência (RN-18). `0` em operação `LIQUIDADA`."
+          example: 9763.54

@@ -27,6 +27,7 @@ Contrato HTTP do **financial-operations-service**. Todos os endpoints recebem e 
 | `POST` | `/operacoes/:identificador/amortizacoes` | Registra a antecipação das últimas parcelas | `201` (nova) / `200` (reenvio) |
 | `GET` | `/operacoes/:identificador/liquidacao` | Valor para quitar na `dataReferencia` (opcional) (RN-18) | `200` |
 | `POST` | `/operacoes/:identificador/liquidacao` | Quita a operação antes do prazo (RN-18) | `201` (nova) / `200` (reenvio) |
+| `GET` | `/operacoes/:identificador/resumo` | Resumo financeiro na `dataReferencia` (opcional) (RN-20) | `200` |
 
 | `GET` | `/swagger` | Swagger UI | `301` → `/swagger/index.html` |
 | `GET` | `/openapi.yaml` | Especificação OpenAPI 3 | `200` |
@@ -385,6 +386,37 @@ Quita as últimas `quantidadeParcelas` parcelas em aberto, com a mesma conta da 
 - A resposta traz `eventoId`, `tipo`, `lancamentos` (mesmo formato das `parcelas` da simulação), `totais`, `saldoDevedorAntes`, `saldoDevedorApos` e `quantidadeParcelasRestantes`.
 - Mesmas regras de `400` da simulação.
 
+
+## `GET /operacoes/:identificador/resumo`
+
+Totais da operação na `dataReferencia` (RN-20), somados a partir dos lançamentos e das parcelas. A data tem as mesmas regras da consulta da operação (RN-09): omitida, vale hoje em GMT-03:00, e não pode ser anterior à última movimentação financeira.
+
+Exemplo depois do pagamento parcial de 500,00 em 10/12/2026 (RN-14), consultado no mesmo dia:
+
+```json
+{
+  "numeroOperacao": "OP-2026-0001",
+  "dataReferencia": "2026-12-10",
+  "status": "EM_ATRASO",
+  "diasEmAtraso": 10,
+  "totalContratado": 10000,
+  "totalPrevisto": 11242.88,
+  "totalPago": 500,
+  "valorAmortizado": 293.14,
+  "jurosPagos": 185,
+  "encargosPagos": 21.86,
+  "descontoAntecipacao": 0,
+  "valorVencido": 458.77,
+  "encargosEmAberto": 0,
+  "saldoDevedor": 9706.86,
+  "valorParaQuitar": 9763.54
+}
+```
+
+- `totalPago = valorAmortizado + jurosPagos + encargosPagos`, sempre. O `descontoAntecipacao` não é dinheiro recebido e fica fora do `totalPago`.
+- `valorParaQuitar` é o mesmo valor do `GET /liquidacao` na mesma data e é `0` em operação `LIQUIDADA`.
+- `valorVencido` e `encargosEmAberto` consideram só as parcelas vencidas na data; sem atraso, os dois são `0`.
+- Erros: os mesmos da consulta da operação (identificador inválido, `dataReferencia` inválida ou anterior à última movimentação, operação inexistente).
 
 ## `GET /health`
 
