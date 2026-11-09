@@ -14,7 +14,7 @@
 ![Projeto acadêmico](https://img.shields.io/badge/projeto-acad%C3%AAmico-2563eb?style=for-the-badge)
 ![Conventional Commits](https://img.shields.io/badge/commits-conventional-f97316?style=for-the-badge)
 
-[Veja funcionando](#veja-funcionando) · [Começo rápido](#começo-rápido) · [Endpoints](#7-endpoints) · [Contratos](docs/architecture/contracts/README.md) · [Regras de negócio](docs/requirements/regras-de-negocio-fase-2.md) · [Decisões](docs/architecture/adr/README.md)
+[Veja funcionando](#veja-funcionando) · [Começo rápido](#começo-rápido) · [Endpoints](#7-endpoints) · [Contratos](docs/architecture/contracts/README.md) · [Regras de negócio](docs/requirements/regras-de-negocio-fase-2.md) · [Decisões](docs/architecture/adr/README.md) · [Base de Conhecimento](docs/base-de-conhecimento/README.md)
 
 </div>
 
@@ -22,7 +22,7 @@
 
 ## Sobre o projeto
 
-O **financial-operations-service** é um projeto acadêmico da equipe **UNICSUL FinOps**. Ele é a **última etapa da Esteira de Crédito**: recebe do serviço de juros as operações já definidas com o cliente, com o calendário de parcelas pronto, registra a operação e, nas próximas fases, acompanha pagamentos, atrasos e liquidação.
+O **financial-operations-service** é um projeto acadêmico da equipe **UNICSUL FinOps**. Ele é a **última etapa da Esteira de Crédito**: recebe do serviço de juros as operações já definidas com o cliente, com o calendário de parcelas pronto, registra a operação e acompanha pagamentos, atrasos, amortização e liquidação.
 
 ```text
 Dados do cliente
@@ -478,12 +478,17 @@ Mais detalhes e soluções em [Troubleshooting](docs/guides/troubleshooting.md).
 
 | Documento | Conteúdo |
 | --- | --- |
+| [**Base de Conhecimento**](docs/base-de-conhecimento/README.md) | **Comece aqui se for mexer no código:** arquitetura, receitas, regras no código, dados, testes e armadilhas |
 | [Requisitos](docs/requirements/README.md) | Features, fases e regras de negócio |
+| [Requisitos não implementados](docs/requirements/nao-implementados.md) | O que ficou de fora e por quê |
 | [Regras de negócio da Fase 2](docs/requirements/regras-de-negocio-fase-2.md) | Pagamento, atraso, encargos, inadimplência, amortização, liquidação, resumo e histórico |
 | [Contratos da API](docs/architecture/contracts/README.md) | Endpoints, payloads, validações e erros |
 | [Guia de convenções](docs/architecture/contracts/guia-de-convencoes.md) | Regras comuns a todo endpoint e checklist da PR de contrato |
 | [Decisões arquiteturais](docs/architecture/adr/README.md) | ADRs: por que o projeto é como é |
 | [Diagramas](docs/architecture/diagrams/README.md) | Contexto, camadas, fluxo e modelo de dados |
+| [Diagramas de classe](docs/architecture/diagrams/classes.md) | Camadas, domínio e resultados, em UML |
+| [Diagrama de implantação](docs/architecture/diagrams/implantacao.md) | Nativo, container e rede do laboratório |
+| [Integração com sistemas externos](docs/architecture/integracoes.md) | Quem chama o serviço e como integrar |
 | [Troubleshooting](docs/guides/troubleshooting.md) | Problemas comuns e soluções |
 | [Fluxo Git](docs/development/git-workflow.md) | Branches, commits e Pull Requests no dia a dia |
 | [Governança do projeto](docs/development/project-governance.md) | Papéis, Kanban e regras da equipe |

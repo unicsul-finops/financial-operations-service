@@ -6,6 +6,8 @@ Aceita
 
 > **Atualização (2026-10-10):** a divisão em camadas continua valendo. Com a integração com o juros ([ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md)), o service não calcula mais o cronograma: ele valida o payload do juros (`validacao.go`) e confere o calendário recebido (`calendario.go`). O exemplo de payload aninhado citado abaixo agora é o do juros, não o da Decisão.
 
+> **Atualização (2026-11-09):** a convenção "não há interfaces entre as camadas" mudou na Fase 2. O service passou a declarar as interfaces que usa, `RepositorioOperacoes` e `RepositorioMovimentacoes` (`internal/service`), para que os testes unitários rodem com dublês em memória, sem banco. O `OperacaoRepository` continua sendo a única implementação real. O handler também responde `404` para `domain.ErrParcelaNaoEncontrada`. A transação das movimentações está no [ADR-014](ADR-014-concorrencia-e-idempotencia-das-movimentacoes.md).
+
 ## Data
 
 2026-09-24

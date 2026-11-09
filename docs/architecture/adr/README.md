@@ -17,8 +17,11 @@ Esta pasta registra as decisões técnicas relevantes do **financial-operations-
 | [ADR-009](ADR-009-operacao-a-partir-da-simulacao-de-juros.md) | Operação criada a partir da simulação do serviço de juros | Aceita |
 | [ADR-010](ADR-010-reinicio-das-migrations.md) | Reinício das migrations na integração com o juros | Aceita |
 | [ADR-011](ADR-011-id-sequencial.md) | ID da operação sequencial, no lugar do UUID | Aceita |
-| [ADR-012](ADR-012-eventos-e-lancamentos.md) | Movimentações como eventos e lançamentos, e atraso calculado na consulta | Proposta |
-| [ADR-013](ADR-013-container-para-entrega.md) | Container para rodar a entrega em máquinas sem Go nem PostgreSQL | Proposta |
+| [ADR-012](ADR-012-eventos-e-lancamentos.md) | Movimentações como eventos e lançamentos, e atraso calculado na consulta | Aceita |
+| [ADR-013](ADR-013-container-para-entrega.md) | Container para rodar a entrega em máquinas sem Go nem PostgreSQL | Aceita |
+| [ADR-014](ADR-014-concorrencia-e-idempotencia-das-movimentacoes.md) | Concorrência e idempotência das movimentações | Aceita |
+| [ADR-015](ADR-015-painel-web-embutido.md) | Painel web num arquivo HTML embutido no binário | Aceita |
+| [ADR-016](ADR-016-cors-liberado-e-sem-autenticacao.md) | CORS liberado por padrão e API sem autenticação | Aceita |
 
 ## Quando escrever um ADR
 

@@ -2,6 +2,13 @@
 
 Os diagramas estão em [Mermaid](https://mermaid.js.org/), que o GitHub renderiza direto no navegador.
 
+| Diagrama | Onde |
+| --- | --- |
+| Contexto, camadas, fluxo do `POST /operacoes`, modelo de dados e ciclo de vida | Nesta página |
+| **Classes** (estrutura das camadas, domínio, resultados e a colaboração num pagamento) | [classes.md](classes.md) |
+| **Implantação** (execução nativa, container e a esteira na rede do laboratório) | [implantacao.md](implantacao.md) |
+| Integração com os outros sistemas | [../integracoes.md](../integracoes.md) |
+
 ## Contexto: Esteira de Crédito
 
 ```mermaid
